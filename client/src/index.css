@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+  }
+  body {
+    @apply bg-gradient-to-br from-loteria-red via-red-900 to-loteria-green min-h-screen text-white font-display;
+  }
+  ::-webkit-scrollbar {
+    width: 4px;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-white/20 rounded-full;
+  }
+}
+
+@layer components {
+  .card-loteria {
+    @apply relative overflow-hidden cursor-pointer select-none transition-all duration-150 border-2;
+    aspect-ratio: 3/4;
+    border-radius: 0.5rem;
+  }
+  .card-loteria:active {
+    transform: scale(0.95);
+  }
+  .card-loteria.marked {
+    @apply opacity-60 border-green-400;
+  }
+
+  .btn-loteria {
+    @apply px-6 py-3 rounded-xl font-bold text-lg tracking-wider select-none;
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .btn-loteria:active {
+    transform: scale(0.96);
+  }
+  .btn-loteria:hover {
+    @apply shadow-lg;
+  }
+
+  .btn-primary {
+    @apply btn-loteria bg-loteria-gold text-loteria-brown;
+  }
+  .btn-primary:hover {
+    @apply bg-yellow-400;
+  }
+  .btn-primary:active {
+    @apply bg-yellow-500;
+  }
+
+  .btn-danger {
+    @apply btn-loteria bg-loteria-red text-white;
+  }
+  .btn-danger:hover {
+    @apply bg-red-600;
+  }
+
+  .btn-ghost {
+    @apply btn-loteria bg-white/10 text-white/80 hover:bg-white/20;
+  }
+
+  .panel {
+    @apply bg-black/20 backdrop-blur-md rounded-2xl border border-white/10 shadow-xl;
+  }
+}
