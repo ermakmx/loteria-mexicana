@@ -36,7 +36,7 @@ export default function useWebSocket(salaId, jugadorId) {
         reconnectAttemptsRef.current = 0
         setConnected(true)
         if (salaId) {
-          send('get-state', { salaId })
+          send('get-state', { salaId, jugadorId })
         }
       }
 
@@ -66,12 +66,20 @@ export default function useWebSocket(salaId, jugadorId) {
 
     connect()
 
+    // Periodic ping to keep ultimaActividad alive
+    const pingInterval = setInterval(() => {
+      if (salaId && jugadorId && wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ event: 'get-state', data: { salaId, jugadorId } }))
+      }
+    }, 15000)
+
     return () => {
       mounted = false
       clearTimeout(reconnectTimerRef.current)
+      clearInterval(pingInterval)
       wsRef.current?.close()
     }
-  }, [salaId])
+  }, [salaId, jugadorId])
 
   return { connected, send, on, off, lastState }
 }

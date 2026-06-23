@@ -354,11 +354,11 @@ wss.on('connection', (ws) => {
           break
         }
         case 'get-state': {
+          wsClients.set(ws, { salaId: data.salaId || null, jugadorId: data.jugadorId || null })
           const sala = salas.get(data.salaId)
           if (sala) {
-            const info = wsClients.get(ws)
-            const jugador = sala.jugadores.find(j => j.id === info?.jugadorId)
-            wsSend(ws, 'sala-actualizada', { ...sanitizarSala(sala, info?.jugadorId), tablero: jugador?.tablero || null })
+            const jugador = sala.jugadores.find(j => j.id === data.jugadorId)
+            wsSend(ws, 'sala-actualizada', { ...sanitizarSala(sala, data.jugadorId), tablero: jugador?.tablero || null })
           }
           break
         }
