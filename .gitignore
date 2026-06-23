@@ -9,6 +9,17 @@ client/node_modules/
 client/dist/
 server/dist/
 
+# Runtime data
+server/rankings.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
 # Environment files
 .env
 .env.local
