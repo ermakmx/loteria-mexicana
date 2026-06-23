@@ -1,56 +1,46 @@
 import { useState, useEffect } from 'react'
-import { io } from 'socket.io-client'
+import Preloader from './components/Preloader'
 import Lobby from './components/Lobby'
 import Game from './components/Game'
+import { LenguajeProvider } from './i18n/context'
 
 export default function App() {
+  const [listo, setListo] = useState(false)
   const [jugador, setJugador] = useState(null)
   const [salaId, setSalaId] = useState(null)
-  const [socket, setSocket] = useState(null)
 
   useEffect(() => {
-    const serverUrl = import.meta.env.VITE_SERVER_URL || undefined
-    const s = io(serverUrl, {
-      transports: ['websocket', 'polling'],
-      reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
-    })
-    s.on('connect', () => setSocket(s))
-    s.on('connect_error', (err) => console.error('Socket error:', err.message))
-    return () => s.disconnect()
-  }, [])
-
-  if (!socket) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <div className="text-center text-white/60">
-          <div className="text-4xl mb-4 animate-pulse">🎴</div>
-          <p>Conectando al servidor...</p>
-        </div>
-      </div>
-    )
-  }
+    if (salaId && jugador) {
+      localStorage.setItem('loteria_ultimo_juego', JSON.stringify({ salaId, jugador, ts: Date.now() }))
+    }
+  }, [salaId, jugador])
 
   const volverAlLobby = () => {
+    localStorage.removeItem('loteria_ultimo_juego')
     setJugador(null)
     setSalaId(null)
   }
 
+  if (!listo) return <Preloader onReady={() => setListo(true)} />
+
   if (!salaId) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Lobby socket={socket} onUnirse={(data) => {
-          setJugador(data.jugador)
-          setSalaId(data.salaId)
-        }} />
-      </div>
+      <LenguajeProvider>
+        <div className="min-h-screen flex items-center justify-center p-4">
+          <Lobby onUnirse={(data) => {
+            setJugador(data.jugador)
+            setSalaId(data.salaId)
+          }} />
+        </div>
+      </LenguajeProvider>
     )
   }
 
   return (
-    <div className="min-h-screen flex items-start justify-center p-4 pt-6">
-      <Game socket={socket} jugador={jugador} salaId={salaId} onSalir={volverAlLobby} />
-    </div>
+    <LenguajeProvider>
+      <div className="min-h-screen flex items-start justify-center p-4 pt-6">
+        <Game jugador={jugador} salaId={salaId} onSalir={volverAlLobby} />
+      </div>
+    </LenguajeProvider>
   )
 }

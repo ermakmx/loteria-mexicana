@@ -1,22 +1,20 @@
-const audioCache = new Map()
+export const audioCache = new Map()
 let audioActual = null
 
 export function cantarCarta(carta, callback) {
-  const src = `/audio/carta_${carta.id}.mp3`
+  const audio = audioCache.get(carta.id)
+  if (!audio) {
+    if (callback) callback('end')
+    return
+  }
 
   if (audioActual) {
     audioActual.pause()
     audioActual.currentTime = 0
   }
 
-  if (audioCache.has(src)) {
-    audioActual = audioCache.get(src)
-    audioActual.currentTime = 0
-  } else {
-    audioActual = new Audio(src)
-    audioActual.preload = 'auto'
-    audioCache.set(src, audioActual)
-  }
+  audioActual = audio
+  audioActual.currentTime = 0
 
   if (callback) {
     audioActual.onended = () => callback('end')

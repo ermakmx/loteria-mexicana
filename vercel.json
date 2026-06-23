@@ -3,7 +3,14 @@
   "outputDirectory": "client/dist",
   "framework": "vite",
   "installCommand": "cd client && npm install",
+  "functions": {
+    "api/index.js": {
+      "memory": 256,
+      "maxDuration": 60
+    }
+  },
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

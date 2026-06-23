@@ -1,11 +1,17 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { getCarta } from '../data/cartas'
 import { cantarCarta, callarCantor } from '../utils/cantor'
 import Tablero from './Tablero'
 import Mazo from './Mazo'
 import CantorAnimado from './CantorAnimado'
+import { useLenguaje } from '../i18n/context'
+import useWebSocket from '../useWebSocket'
 
-export default function Game({ socket, jugador, salaId, onSalir }) {
+const API = '/api'
+
+export default function Game({ jugador, salaId, onSalir }) {
+  const { t } = useLenguaje()
+  const { connected, lastState } = useWebSocket(salaId, jugador.id)
   const [estado, setEstado] = useState('esperando')
   const [tablero, setTablero] = useState([])
   const [marcadas, setMarcadas] = useState(new Set())
@@ -17,55 +23,101 @@ export default function Game({ socket, jugador, salaId, onSalir }) {
   const [cantando, setCantando] = useState(false)
   const [error, setError] = useState('')
   const [errorClave, setErrorClave] = useState(0)
+  const [motivoFin, setMotivoFin] = useState(null)
 
   const esHost = jugadores[0]?.id === jugador.id
+  const ultimoCartaIdRef = useRef(null)
+  const pollingRef = useRef(null)
+
+  async function post(endpoint, data, maxRetries = 4) {
+    for (let i = 0; i < maxRetries; i++) {
+      if (i > 0) await new Promise(r => setTimeout(r, 400))
+      try {
+        const r = await fetch(`${API}${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        })
+        const result = await r.json()
+        if ((result.error === 'Sala no existe' || result.error === 'Juego no activo') && i < maxRetries - 1) continue
+        return result
+      } catch {
+        if (i < maxRetries - 1) continue
+        return { error: 'Error de conexión' }
+      }
+    }
+    return { error: 'Error después de reintentos' }
+  }
+
+  // WebSocket state update handler
+  function handleStateUpdate(data) {
+    if (!data) return
+    setJugadores(data.jugadores || [])
+
+    if (data.estado === 'jugando' && data.tablero) {
+      setTablero(data.tablero)
+    }
+
+    if (data.cartaActualId !== ultimoCartaIdRef.current && data.cartaActualId !== null) {
+      ultimoCartaIdRef.current = data.cartaActualId
+      const carta = getCarta(data.cartaActualId)
+      if (carta) {
+        setCantando(true)
+        cantarCarta(carta, (tipo) => { if (tipo === 'end') setCantando(false) })
+      }
+    }
+
+    setCartaActualId(data.cartaActualId)
+    setHistorial(data.historial || [])
+    setCartasRestantes(data.cartasRestantes ?? 0)
+    setEstado(data.estado)
+    if (data.estado !== 'terminado') setMotivoFin(null)
+
+    if (data.ganador) {
+      setGanador(data.ganador)
+      setMotivoFin(data.motivoFin || null)
+      setCantando(false)
+      callarCantor()
+    }
+  }
+
+  // Apply WebSocket state updates
+  useEffect(() => {
+    handleStateUpdate(lastState)
+  }, [lastState])
+
+  // REST polling fallback
+  async function poll() {
+    for (let i = 0; i < 3; i++) {
+      if (i > 0) await new Promise(r => setTimeout(r, 300))
+      try {
+        const r = await fetch(`${API}/estado-sala?salaId=${salaId}&jugadorId=${jugador.id}`)
+        if (!r.ok) continue
+        const data = await r.json()
+        if (data.error) { if (data.error === 'Sala no existe' && i < 2) continue; return }
+        handleStateUpdate(data)
+        return
+      } catch { continue }
+    }
+  }
 
   useEffect(() => {
-    if (!socket) return
-    const fns = {
-      juego_iniciado: (data) => {
-        if (data.jugadorId === jugador.id) setTablero(data.tablero)
-        setJugadores(data.jugadores)
-        setEstado('jugando')
-        setMarcadas(new Set())
-        setCartaActualId(null)
-        setHistorial([])
-        setGanador(null)
-        setError('')
-      },
-      carta_sacada: (data) => {
-        setCartaActualId(data.cartaId)
-        setHistorial(data.historial)
-        setCartasRestantes(data.cartasRestantes)
-        const carta = getCarta(data.cartaId)
-        if (carta) {
-          setCantando(true)
-          cantarCarta(carta, (tipo) => { if (tipo === 'end') setCantando(false) })
-        }
-      },
-      loteria_valida: (data) => {
-        setEstado('terminado')
-        setGanador(data.ganador)
-        setCantando(false)
-        callarCantor()
-      },
-      loteria_invalida: (data) => {
-        setError('¡Lotería falsa! ' + data.razon)
-        setErrorClave(k => k + 1)
-      },
-      jugador_unido: (data) => setJugadores(data.jugadores),
-      jugador_desconectado: (data) => setJugadores(data.jugadores),
-      juego_reiniciado: (data) => {
-        setJugadores(data.jugadores)
-        setEstado('esperando')
-        setTablero([]); setMarcadas(new Set()); setCartaActualId(null)
-        setHistorial([]); setGanador(null); setError('')
-      },
-      error: (data) => { setError(data.mensaje); setErrorClave(k => k + 1) },
+    if (!connected) {
+      poll()
+      pollingRef.current = setInterval(poll, 600)
+    } else {
+      clearInterval(pollingRef.current)
     }
-    for (const [ev, fn] of Object.entries(fns)) socket.on(ev, fn)
-    return () => { for (const [ev, fn] of Object.entries(fns)) socket.off(ev, fn) }
-  }, [socket, jugador.id])
+    return () => { clearInterval(pollingRef.current); callarCantor() }
+  }, [salaId, jugador.id, connected])
+
+  useEffect(() => {
+    if (estado !== 'jugando' || !esHost) return
+    const intervalo = setInterval(async () => {
+      await post('/siguiente-carta', { salaId })
+    }, 4000)
+    return () => clearInterval(intervalo)
+  }, [estado, esHost, salaId])
 
   const marcarCarta = useCallback((cartaId) => {
     setMarcadas(prev => {
@@ -76,32 +128,56 @@ export default function Game({ socket, jugador, salaId, onSalir }) {
     })
   }, [])
 
-  const cantarLoteria = () => { if (estado === 'jugando' && socket) socket.emit('cantar_loteria') }
-  const iniciarJuego = () => { if (socket) socket.emit('iniciar_juego') }
-  const nuevoJuego = () => { if (socket) { callarCantor(); socket.emit('nuevo_juego') } }
+  async function iniciarJuego() {
+    const data = await post('/iniciar-juego', { salaId, jugadorId: jugador.id })
+    if (data.error) { setError(data.error); setErrorClave(k => k + 1); return }
+    if (data.tablero) setTablero(data.tablero)
+    if (data.jugadores) setJugadores(data.jugadores)
+    ultimoCartaIdRef.current = null
+    setEstado('jugando')
+  }
+
+  async function cantarLoteria() {
+    const data = await post('/cantar-loteria', { salaId, jugadorId: jugador.id })
+    if (data.valida) {
+      setEstado('terminado')
+      setGanador(data.ganador)
+      setCantando(false)
+      callarCantor()
+    } else {
+      setError(t('loteria_falsa') + ' ' + (data.razon || ''))
+      setErrorClave(k => k + 1)
+    }
+  }
+
+  async function nuevoJuego() {
+    const data = await post('/nuevo-juego', { salaId })
+    ultimoCartaIdRef.current = null
+    setMarcadas(new Set())
+    setGanador(null)
+    setEstado('esperando')
+    if (data.jugadores) setJugadores(data.jugadores)
+  }
+
   const cartaActual = cartaActualId ? getCarta(cartaActualId) : null
 
   if (estado === 'terminado') {
     const ganaste = ganador?.id === jugador.id
+    const esAbandono = motivoFin === 'abandono'
+    const mensaje = ganaste
+      ? (esAbandono ? t('abandono_todos') : t('nuevo_campeon'))
+      : t('perdiste')
     return (
       <div className="w-full max-w-sm mx-auto text-center py-8 sm:py-12 px-4">
         <div className="panel p-8">
-          <div className="text-6xl sm:text-7xl mb-4">
-            {ganaste ? '🏆' : '🎴'}
-          </div>
+          <div className="text-6xl sm:text-7xl mb-4">{ganaste ? (esAbandono ? '\U0001f4aa' : '\U0001f3c6') : '\U0001f3b4'}</div>
           <h2 className={`text-3xl sm:text-4xl font-bold mb-2 ${ganaste ? 'text-loteria-gold' : 'text-white/80'}`}>
-            {ganaste ? '¡GANASTE!' : `Ganó ${ganador?.nombre}`}
+            {ganaste ? t('ganaste') : `${t('ganador')} ${ganador?.nombre}`}
           </h2>
-          <p className="text-sm text-white/40 mb-6">
-            {ganaste ? 'Eres el nuevo campeón de la Lotería' : 'Mejor suerte la próxima vez'}
-          </p>
+          <p className="text-sm text-white/40 mb-6">{mensaje}</p>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
-            <button onClick={nuevoJuego} className="btn-primary px-8 py-4 flex items-center justify-center gap-2">
-              🔄 Jugar de nuevo
-            </button>
-            <button onClick={onSalir} className="btn-ghost px-8 py-4">
-              Salir
-            </button>
+            <button onClick={nuevoJuego} className="btn-primary px-8 py-4 flex items-center justify-center gap-2">{t('jugar_de_nuevo')}</button>
+            <button onClick={onSalir} className="btn-ghost px-8 py-4">{t('salir')}</button>
           </div>
         </div>
       </div>
@@ -110,16 +186,15 @@ export default function Game({ socket, jugador, salaId, onSalir }) {
 
   return (
     <div className="w-full max-w-4xl mx-auto px-3 sm:px-4 py-4">
-      {/* Header */}
       <div className="flex items-center justify-between mb-4 sm:mb-6">
         <button onClick={onSalir} className="text-white/30 hover:text-white/80 text-sm flex items-center gap-1 transition-colors">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
           </svg>
-          Salir
+          {t('salir')}
         </button>
         <div className="text-center">
-          <h1 className="text-base font-bold text-loteria-gold/80 tracking-wide">🎴 Lotería</h1>
+          <h1 className="text-base font-bold text-loteria-gold/80 tracking-wide">{'\U0001f3b4'} {t('lobby_title')}</h1>
           <div className="text-[10px] text-white/30 tracking-widest">{salaId}</div>
         </div>
         <div className="flex gap-1">
@@ -131,14 +206,12 @@ export default function Game({ socket, jugador, salaId, onSalir }) {
         </div>
       </div>
 
-      {/* Waiting Room */}
       {estado === 'esperando' && (
         <div className="max-w-sm mx-auto">
           <div className="panel p-6 text-center">
             <div className="text-4xl mb-3">🎴</div>
-            <h2 className="text-lg font-bold mb-1">Esperando jugadores</h2>
-            <p className="text-xs text-white/40 mb-5">Comparte el código <span className="text-loteria-gold font-bold tracking-widest">{salaId}</span> para que se unan</p>
-
+            <h2 className="text-lg font-bold mb-1">{t('esperando_jugadores')}</h2>
+            <p className="text-xs text-white/40 mb-5">{t('compartir_codigo')} <span className="text-loteria-gold font-bold tracking-widest">{salaId}</span></p>
             <div className="space-y-2 mb-5">
               {jugadores.map((j, i) => (
                 <div key={j.id} className={`py-2 px-3 rounded-xl text-sm flex items-center justify-between ${j.id === jugador.id ? 'bg-loteria-gold/10 ring-1 ring-loteria-gold/30' : 'bg-white/5'}`}>
@@ -151,55 +224,33 @@ export default function Game({ socket, jugador, salaId, onSalir }) {
                 </div>
               ))}
             </div>
-
-            {jugadores.length < 2 && (
-              <p className="text-xs text-white/30 mb-4">Mínimo 2 jugadores para empezar</p>
-            )}
-
+            {jugadores.length < 2 && <p className="text-xs text-white/30 mb-4">{t('minimo_2')}</p>}
             {esHost ? (
-              <button
-                onClick={iniciarJuego}
-                disabled={jugadores.length < 2}
-                className="w-full btn-primary py-4 disabled:opacity-30 disabled:cursor-not-allowed text-base"
-              >
-                ▶️ Iniciar juego
-              </button>
+              <button onClick={iniciarJuego} disabled={jugadores.length < 2}
+                className="w-full btn-primary py-4 disabled:opacity-30 disabled:cursor-not-allowed text-base">{t('iniciar_juego')}</button>
             ) : (
               <div className="flex items-center justify-center gap-2 text-sm text-white/40">
-                <span className="w-2 h-2 rounded-full bg-loteria-gold animate-pulse" />
-                Esperando al host...
+                <span className="w-2 h-2 rounded-full bg-loteria-gold animate-pulse" /> {t('esperando_host')}
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Game */}
       {estado === 'jugando' && (
-        <>
-          {/* Desktop: 2 columns | Mobile: single column */}
-          <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-6 xl:gap-8 items-start">
-            {/* Left column: Cantor + Current Card + LOTERÍA button */}
-            <div className="flex flex-col items-center gap-3 mb-4 lg:mb-0 lg:sticky lg:top-4">
-              <CantorAnimado activo={cantando} cartaNombre={cartaActual?.nombre} />
-              <Mazo cartaActualId={cartaActualId} historial={historial} cartasRestantes={cartasRestantes} />
-              <button
-                onClick={cantarLoteria}
-                className="btn-danger text-xl sm:text-2xl px-8 py-5 sm:py-6 shadow-2xl shadow-red-600/20 w-full max-w-[260px] animate-pulse-loteria"
-              >
-                ¡LOTERÍA!
-              </button>
-            </div>
-
-            {/* Right column: Board */}
-            <div className="flex-1">
-              <Tablero tablero={tablero} marcadas={marcadas} onMarcar={marcarCarta} />
-            </div>
+        <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-6 xl:gap-8 items-start">
+          <div className="flex flex-col items-center gap-3 mb-4 lg:mb-0 lg:sticky lg:top-4">
+            <CantorAnimado activo={cantando} cartaNombre={cartaActual?.nombre} />
+            <Mazo cartaActualId={cartaActualId} historial={historial} cartasRestantes={cartasRestantes} />
+            <button onClick={cantarLoteria}
+              className="btn-danger text-xl sm:text-2xl px-8 py-5 sm:py-6 shadow-2xl shadow-red-600/20 w-full max-w-[260px] animate-pulse-loteria">¡LOTERÍA!</button>
           </div>
-        </>
+          <div className="flex-1">
+            <Tablero tablero={tablero} marcadas={marcadas} onMarcar={marcarCarta} />
+          </div>
+        </div>
       )}
 
-      {/* Error toast */}
       {error && (
         <div key={errorClave} className="fixed top-4 left-1/2 -translate-x-1/2 bg-red-600/90 text-white px-5 py-3 rounded-xl shadow-xl text-sm font-bold animate-bounce-in z-50 max-w-[90vw] text-center">
           {error}
