@@ -367,15 +367,6 @@ wss.on('connection', (ws) => {
   })
 
   ws.on('close', () => {
-    const info = wsClients.get(ws)
-    if (info?.salaId && info?.jugadorId) {
-      const sala = salas.get(info.salaId)
-      if (sala) {
-        sala.jugadores = sala.jugadores.filter(j => j.id !== info.jugadorId)
-        if (sala.jugadores.length === 0) { salas.delete(info.salaId); wsClients.delete(ws); return }
-        wsBroadcastState(sala)
-      }
-    }
     wsClients.delete(ws)
   })
 })
@@ -383,18 +374,16 @@ wss.on('connection', (ws) => {
 // Abandono checker
 setInterval(() => {
   const ahora = Date.now()
-  for (const [, sala] of salas) {
+  for (const [id, sala] of salas) {
+    if (sala.jugadores.length === 0) { salas.delete(id); continue }
     if (sala.estado !== 'jugando') continue
-    const inactivos = sala.jugadores.filter(j => ahora - (j.ultimaActividad || 0) >= TIMEOUT_MS)
-    if (inactivos.length === 0) continue
     sala.jugadores = sala.jugadores.filter(j => ahora - (j.ultimaActividad || 0) < TIMEOUT_MS)
+    if (sala.jugadores.length === 0) { salas.delete(id); continue }
     if (sala.jugadores.length === 1) {
       sala.estado = 'terminado'
       sala.ganador = sala.jugadores[0]
       sala.motivoFin = 'abandono'
       wsBroadcastState(sala)
-    } else if (sala.jugadores.length === 0) {
-      salas.delete(sala.id)
     } else {
       wsBroadcastState(sala)
     }
