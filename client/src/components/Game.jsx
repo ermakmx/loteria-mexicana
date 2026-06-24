@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { getCarta } from '../data/cartas'
-import { cantarCarta, callarCantor } from '../utils/cantor'
+import { cantarCarta, callarCantor, reproducirEfecto } from '../utils/cantor'
 import Tablero from './Tablero'
 import Mazo from './Mazo'
 import CantorAnimado from './CantorAnimado'
@@ -172,9 +172,12 @@ export default function Game({ jugador, salaId, onSalir }) {
       setGanador(data.ganador)
       setCantando(false)
       callarCantor()
+      reproducirEfecto('victoria')
     } else {
       setError(t('loteria_falsa') + ' ' + (data.razon || ''))
       setErrorClave(k => k + 1)
+      callarCantor()
+      reproducirEfecto('trampa')
     }
   }
 
