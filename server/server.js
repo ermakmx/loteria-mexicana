@@ -12,7 +12,7 @@ const RANKINGS_FILE = path.resolve(__dirname, 'rankings.json')
 // ========== GAME LOGIC (shared) ==========
 const TOTAL_CARTAS = 53
 const CARTAS_POR_TABLERO = 16
-const TIMEOUT_MS = 30000
+const TIMEOUT_MS = 120000 // 2 min antes de declarar abandono
 const salas = new Map()
 const wsClients = new Map()
 
@@ -270,6 +270,9 @@ const wss = new WebSocketServer({ server, path: '/ws' })
 
 wss.on('connection', (ws) => {
   wsClients.set(ws, { salaId: null, jugadorId: null })
+  ws.isAlive = true
+
+  ws.on('pong', () => { ws.isAlive = true })
 
   ws.on('message', (raw) => {
     try {
@@ -389,6 +392,18 @@ setInterval(() => {
     }
   }
 }, 10000)
+
+// Heartbeat: cerrar conexiones muertas
+setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) {
+      wsClients.delete(ws)
+      return ws.terminate()
+    }
+    ws.isAlive = false
+    ws.ping()
+  })
+}, 30000)
 
 const PORT = process.env.PORT || 4000
 server.listen(PORT, () => {
