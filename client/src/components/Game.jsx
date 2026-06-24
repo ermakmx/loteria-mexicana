@@ -24,6 +24,7 @@ export default function Game({ jugador, salaId, onSalir }) {
   const [error, setError] = useState('')
   const [errorClave, setErrorClave] = useState(0)
   const [motivoFin, setMotivoFin] = useState(null)
+  const [cuentaRegresiva, setCuentaRegresiva] = useState(0)
 
   const esHost = jugadores[0]?.id === jugador.id
   const ultimoCartaIdRef = useRef(null)
@@ -121,11 +122,22 @@ export default function Game({ jugador, salaId, onSalir }) {
   }, [salaId, jugador.id, connected])
 
   useEffect(() => {
-    if (estado !== 'jugando' || !esHost) return
-    const intervalo = setInterval(async () => {
+    if (estado !== 'jugando' || !esHost) {
+      setCuentaRegresiva(0)
+      return
+    }
+    // Reset countdown at start
+    setCuentaRegresiva(4)
+    // Card draw every 4s
+    const intervaloCarta = setInterval(async () => {
+      setCuentaRegresiva(4)
       await post('/siguiente-carta', { salaId })
     }, 4000)
-    return () => clearInterval(intervalo)
+    // Countdown tick every 1s
+    const intervaloTick = setInterval(() => {
+      setCuentaRegresiva(prev => Math.max(0, prev - 1))
+    }, 1000)
+    return () => { clearInterval(intervaloCarta); clearInterval(intervaloTick) }
   }, [estado, esHost, salaId])
 
   const marcarCarta = useCallback((cartaId) => {
@@ -251,6 +263,19 @@ export default function Game({ jugador, salaId, onSalir }) {
           <div className="flex flex-col items-center gap-3 mb-4 lg:mb-0 lg:sticky lg:top-4">
             <CantorAnimado activo={cantando} cartaNombre={cartaActual?.nombre} />
             <Mazo cartaActualId={cartaActualId} historial={historial} cartasRestantes={cartasRestantes} />
+            {esHost && cuentaRegresiva > 0 && (
+              <div className="text-center">
+                <div className="relative w-12 h-12 mx-auto mb-1">
+                  <svg className="w-12 h-12 -rotate-90" viewBox="0 0 36 36">
+                    <circle cx="18" cy="18" r="15" fill="none" className="stroke-white/10" strokeWidth="3" />
+                    <circle cx="18" cy="18" r="15" fill="none" className="stroke-loteria-gold" strokeWidth="3"
+                      strokeDasharray={`${(cuentaRegresiva / 4) * 94.2} 94.2`} strokeLinecap="round" />
+                  </svg>
+                  <span className="absolute inset-0 flex items-center justify-center text-sm font-bold">{cuentaRegresiva}</span>
+                </div>
+                <span className="text-[10px] text-white/30">Carta {historial.length + 1} / 53</span>
+              </div>
+            )}
             <button onClick={cantarLoteria}
               className="btn-danger text-xl sm:text-2xl px-8 py-5 sm:py-6 shadow-2xl shadow-red-600/20 w-full max-w-[260px] animate-pulse-loteria">¡LOTERÍA!</button>
           </div>
