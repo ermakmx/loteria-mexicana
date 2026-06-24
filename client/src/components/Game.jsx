@@ -26,6 +26,7 @@ export default function Game({ jugador, salaId, onSalir }) {
   const [motivoFin, setMotivoFin] = useState(null)
   const [cuentaRegresiva, setCuentaRegresiva] = useState(0)
   const [notificacion, setNotificacion] = useState('')
+  const [progreso, setProgreso] = useState({})
 
   const esHost = jugadores[0]?.id === jugador.id
   const ultimoCartaIdRef = useRef(null)
@@ -83,6 +84,7 @@ export default function Game({ jugador, salaId, onSalir }) {
     setCartasRestantes(data.cartasRestantes ?? 0)
     setEstado(data.estado)
     if (data.estado !== 'terminado') setMotivoFin(null)
+    if (data.progreso) setProgreso(data.progreso)
 
     if (data.ganador) {
       setGanador(data.ganador)
@@ -201,6 +203,21 @@ export default function Game({ jugador, salaId, onSalir }) {
             {ganaste ? t('ganaste') : `${t('ganador')} ${ganador?.nombre}`}
           </h2>
           <p className="text-sm text-white/40 mb-6">{mensaje}</p>
+          <div className="space-y-2 mb-6">
+            {Object.entries(progreso).map(([id, p]) => (
+              <div key={id} className={`py-2 px-3 rounded-xl text-sm ${id === ganador?.id ? 'bg-loteria-gold/15 ring-1 ring-loteria-gold/40' : 'bg-white/5'}`}>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-medium text-xs">{p.nombre} {id === ganador?.id ? '👑' : ''}</span>
+                  <span className="text-[10px] text-white/40">{p.llenas}/{p.total}</span>
+                </div>
+                <div className="w-full h-1.5 rounded-full bg-white/10 overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${id === ganador?.id ? 'bg-loteria-gold' : 'bg-white/20'}`}
+                    style={{ width: `${p.pct}%` }} />
+                </div>
+                <div className="text-right text-[10px] text-white/30 mt-0.5">{p.pct}%</div>
+              </div>
+            ))}
+          </div>
           <div className="flex flex-col sm:flex-row gap-3 justify-center">
             <button onClick={nuevoJuego} className="btn-primary px-8 py-4 flex items-center justify-center gap-2">{t('jugar_de_nuevo')}</button>
             <button onClick={onSalir} className="btn-ghost px-8 py-4">{t('salir')}</button>

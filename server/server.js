@@ -101,6 +101,14 @@ function wsSend(ws, event, data) {
 
 function sanitizarSala(sala, jugadorId) {
   if (!sala) return null
+  const historialSet = new Set(sala.historial || [])
+  const progreso = {}
+  for (const j of sala.jugadores) {
+    if (j.tablero) {
+      const llenas = j.tablero.filter(c => historialSet.has(c)).length
+      progreso[j.id] = { nombre: j.nombre, llenas, total: j.tablero.length, pct: Math.round((llenas / j.tablero.length) * 100) }
+    }
+  }
   return {
     estado: sala.estado,
     jugadores: sala.jugadores.map(j => ({ id: j.id, nombre: j.nombre })),
@@ -110,6 +118,7 @@ function sanitizarSala(sala, jugadorId) {
     ganador: sala.ganador ? { id: sala.ganador.id, nombre: sala.ganador.nombre } : null,
     tablero: jugadorId ? (sala.jugadores.find(j => j.id === jugadorId)?.tablero || null) : null,
     motivoFin: sala.motivoFin || null,
+    progreso,
   }
 }
 
