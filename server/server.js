@@ -113,8 +113,9 @@ function sanitizarSala(sala, jugadorId) {
   }
 }
 
-function wsBroadcastState(sala, jugadorIdExcluir) {
+function wsBroadcastState(sala, mensaje) {
   const data = sanitizarSala(sala, null)
+  if (mensaje) data.mensaje = mensaje
   for (const [ws, info] of wsClients.entries()) {
     if (info.salaId !== sala.id || ws.readyState !== WebSocket.OPEN) continue
     const jugador = sala.jugadores.find(j => j.id === info.jugadorId)
@@ -380,6 +381,34 @@ wss.on('connection', (ws) => {
   })
 
   ws.on('close', () => {
+    const info = wsClients.get(ws)
+    if (info?.salaId && info?.jugadorId) {
+      const sala = salas.get(info.salaId)
+      if (sala) {
+        const eraHost = sala.jugadores[0]?.id === info.jugadorId
+        sala.jugadores = sala.jugadores.filter(j => j.id !== info.jugadorId)
+
+        if (sala.jugadores.length === 0) { salas.delete(info.salaId); wsClients.delete(ws); return }
+
+        if (sala.jugadores.length === 1 && sala.estado === 'jugando') {
+          sala.estado = 'terminado'
+          sala.ganador = sala.jugadores[0]
+          sala.motivoFin = 'abandono'
+          registrarVictoria(sala.ganador.nombre, sala)
+          wsBroadcastState(sala)
+          wsClients.delete(ws)
+          return
+        }
+
+        if (eraHost && sala.jugadores.length >= 2) {
+          wsBroadcastState(sala, `Host desconectado. ${sala.jugadores[0].nombre} es el nuevo host.`)
+          wsClients.delete(ws)
+          return
+        }
+
+        wsBroadcastState(sala)
+      }
+    }
     wsClients.delete(ws)
   })
 })

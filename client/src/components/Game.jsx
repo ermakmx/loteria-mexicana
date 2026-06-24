@@ -25,6 +25,7 @@ export default function Game({ jugador, salaId, onSalir }) {
   const [errorClave, setErrorClave] = useState(0)
   const [motivoFin, setMotivoFin] = useState(null)
   const [cuentaRegresiva, setCuentaRegresiva] = useState(0)
+  const [notificacion, setNotificacion] = useState('')
 
   const esHost = jugadores[0]?.id === jugador.id
   const ultimoCartaIdRef = useRef(null)
@@ -94,6 +95,10 @@ export default function Game({ jugador, salaId, onSalir }) {
   // Apply WebSocket state updates
   useEffect(() => {
     handleStateUpdate(lastState)
+    if (lastState?.mensaje) {
+      setNotificacion(lastState.mensaje)
+      setTimeout(() => setNotificacion(''), 5000)
+    }
   }, [lastState])
 
   // REST polling fallback
@@ -285,6 +290,12 @@ export default function Game({ jugador, salaId, onSalir }) {
           <div className="flex-1">
             <Tablero tablero={tablero} marcadas={marcadas} onMarcar={marcarCarta} />
           </div>
+        </div>
+      )}
+
+      {notificacion && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-loteria-gold/90 text-black px-5 py-3 rounded-xl shadow-xl text-sm font-bold animate-bounce-in z-50 max-w-[90vw] text-center">
+          {notificacion}
         </div>
       )}
 
