@@ -20,6 +20,7 @@ export default {
       },
       animation: {
         'card-draw': 'cardDraw 0.5s ease-out',
+        'carta-entrada': 'cartaEntrada 0.4s ease-out',
         'bounce-in': 'bounceIn 0.5s ease-out',
         'pulse-loteria': 'pulseLoteria 1s ease-in-out infinite',
       },
@@ -27,6 +28,11 @@ export default {
         cardDraw: {
           '0%': { transform: 'scale(0) rotate(-10deg)', opacity: '0' },
           '100%': { transform: 'scale(1) rotate(0deg)', opacity: '1' },
+        },
+        cartaEntrada: {
+          '0%': { transform: 'scale(0.5) translateY(20px)', opacity: '0' },
+          '60%': { transform: 'scale(1.05) translateY(-3px)', opacity: '1' },
+          '100%': { transform: 'scale(1) translateY(0)', opacity: '1' },
         },
         bounceIn: {
           '0%': { transform: 'scale(0.3)', opacity: '0' },

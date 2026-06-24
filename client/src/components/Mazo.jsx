@@ -1,5 +1,20 @@
 import { getCarta } from '../data/cartas'
 
+function CartaDisplay({ cartaId }) {
+  const carta = getCarta(cartaId)
+  if (!carta) return null
+  return (
+    <div className="flex flex-col items-center animate-carta-entrada">
+      <img
+        src={`/cards/${carta.imagen}`}
+        alt={carta.nombre}
+        className="w-full max-w-[180px] h-auto max-h-56 object-contain rounded-xl shadow-2xl"
+      />
+      <div className="text-lg sm:text-xl font-bold text-white mt-2 text-center">{carta.nombre}</div>
+    </div>
+  )
+}
+
 export default function Mazo({ cartaActualId, historial, cartasRestantes }) {
   return (
     <div className="flex flex-col items-center gap-2 w-full">
@@ -9,23 +24,8 @@ export default function Mazo({ cartaActualId, historial, cartasRestantes }) {
         <span className="text-white/20">({cartasRestantes} restantes)</span>
       </div>
 
-      <div className="panel p-3 sm:p-4 w-full max-w-[260px] mx-auto animate-bounce-in">
-        {cartaActualId && (() => {
-          const carta = getCarta(cartaActualId)
-          if (!carta) return null
-          return (
-            <div className="flex flex-col items-center">
-              <img
-                src={`/cards/${carta.imagen}`}
-                alt={carta.nombre}
-                className="w-full max-w-[180px] h-auto max-h-56 object-contain rounded-xl shadow-2xl"
-              />
-              <div className="text-lg sm:text-xl font-bold text-white mt-2 text-center">
-                {carta.nombre}
-              </div>
-            </div>
-          )
-        })()}
+      <div className="panel p-3 sm:p-4 w-full max-w-[260px] mx-auto">
+        {cartaActualId && <CartaDisplay key={cartaActualId} cartaId={cartaActualId} />}
       </div>
 
       {historial.length > 0 && (
