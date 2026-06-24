@@ -122,23 +122,23 @@ export default function Game({ jugador, salaId, onSalir }) {
   }, [salaId, jugador.id, connected])
 
   useEffect(() => {
-    if (estado !== 'jugando' || !esHost) {
-      setCuentaRegresiva(0)
-      return
-    }
-    // Reset countdown at start
+    if (estado !== 'jugando') { setCuentaRegresiva(0); return }
     setCuentaRegresiva(4)
-    // Card draw every 4s
-    const intervaloCarta = setInterval(async () => {
+    const intervaloCarta = esHost ? setInterval(async () => {
       setCuentaRegresiva(4)
       await post('/siguiente-carta', { salaId })
-    }, 4000)
-    // Countdown tick every 1s
+    }, 4000) : null
     const intervaloTick = setInterval(() => {
       setCuentaRegresiva(prev => Math.max(0, prev - 1))
     }, 1000)
-    return () => { clearInterval(intervaloCarta); clearInterval(intervaloTick) }
+    return () => { if (intervaloCarta) clearInterval(intervaloCarta); clearInterval(intervaloTick) }
   }, [estado, esHost, salaId])
+
+  // Non-host: reset countdown when a new card arrives
+  useEffect(() => {
+    if (esHost || estado !== 'jugando' || !cartaActualId) return
+    setCuentaRegresiva(4)
+  }, [cartaActualId, esHost, estado])
 
   const marcarCarta = useCallback((cartaId) => {
     setMarcadas(prev => {
@@ -263,19 +263,22 @@ export default function Game({ jugador, salaId, onSalir }) {
           <div className="flex flex-col items-center gap-3 mb-4 lg:mb-0 lg:sticky lg:top-4">
             <CantorAnimado activo={cantando} cartaNombre={cartaActual?.nombre} />
             <Mazo cartaActualId={cartaActualId} historial={historial} cartasRestantes={cartasRestantes} />
-            {esHost && cuentaRegresiva > 0 && (
-              <div className="text-center">
-                <div className="relative w-12 h-12 mx-auto mb-1">
-                  <svg className="w-12 h-12 -rotate-90" viewBox="0 0 36 36">
+            <div className="w-full max-w-[260px]">
+              <div className="flex items-center gap-3 py-2 px-3 rounded-xl bg-white/5">
+                <div className="relative w-10 h-10 flex-shrink-0">
+                  <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
                     <circle cx="18" cy="18" r="15" fill="none" className="stroke-white/10" strokeWidth="3" />
                     <circle cx="18" cy="18" r="15" fill="none" className="stroke-loteria-gold" strokeWidth="3"
-                      strokeDasharray={`${(cuentaRegresiva / 4) * 94.2} 94.2`} strokeLinecap="round" />
+                      strokeDasharray={`${estado === 'jugando' ? (cuentaRegresiva / 4) * 94.2 : 0} 94.2`} strokeLinecap="round" />
                   </svg>
-                  <span className="absolute inset-0 flex items-center justify-center text-sm font-bold">{cuentaRegresiva}</span>
+                  <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">{estado === 'jugando' ? cuentaRegresiva : '--'}</span>
                 </div>
-                <span className="text-[10px] text-white/30">Carta {historial.length + 1} / 53</span>
+                <div className="text-left leading-tight">
+                  <div className="text-xs font-medium text-white/80">Carta {historial.length + 1} / 53</div>
+                  <div className="text-[10px] text-white/30">{cartasRestantes} restantes</div>
+                </div>
               </div>
-            )}
+            </div>
             <button onClick={cantarLoteria}
               className="btn-danger text-xl sm:text-2xl px-8 py-5 sm:py-6 shadow-2xl shadow-red-600/20 w-full max-w-[260px] animate-pulse-loteria">¡LOTERÍA!</button>
           </div>
