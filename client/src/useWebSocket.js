@@ -8,6 +8,7 @@ export default function useWebSocket(salaId, jugadorId) {
   const reconnectTimerRef = useRef(null)
   const [connected, setConnected] = useState(false)
   const [lastState, setLastState] = useState(null)
+  const [salaError, setSalaError] = useState(null)
   const handlersRef = useRef(new Map())
   const reconnectAttemptsRef = useRef(0)
 
@@ -35,6 +36,7 @@ export default function useWebSocket(salaId, jugadorId) {
       wsRef.current.onopen = () => {
         reconnectAttemptsRef.current = 0
         setConnected(true)
+        setSalaError(null)
         if (salaId) {
           send('get-state', { salaId, jugadorId })
         }
@@ -45,6 +47,9 @@ export default function useWebSocket(salaId, jugadorId) {
           const { event, data } = JSON.parse(msg.data)
           if (event === 'sala-actualizada') {
             setLastState(data)
+          }
+          if (event === 'error' && data?.code === 'sala_no_existe') {
+            setSalaError('sala_no_existe')
           }
           const handler = handlersRef.current.get(event)
           if (handler) handler(data)
@@ -81,5 +86,5 @@ export default function useWebSocket(salaId, jugadorId) {
     }
   }, [salaId, jugadorId])
 
-  return { connected, send, on, off, lastState }
+  return { connected, send, on, off, lastState, salaError }
 }

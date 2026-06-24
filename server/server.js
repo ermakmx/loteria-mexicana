@@ -188,7 +188,11 @@ app.all('/api/*', (req, res) => {
       if (req.method !== 'POST') { res.status(405).json({ error: 'POST required' }); return }
       const { salaId } = req.body
       const sala = salas.get(salaId)
-      if (!sala || sala.estado !== 'jugando') { res.status(400).json({ error: 'Juego no activo' }); return }
+      if (!sala) { res.status(400).json({ error: 'Sala no existe' }); return }
+      if (sala.estado !== 'jugando') {
+        console.log(`siguiente-carta: sala ${salaId} estado=${sala.estado} jug=${sala.jugadores.length}`)
+        res.status(400).json({ error: 'Juego no activo' }); return
+      }
       if (!sala.mazo.length) { res.json({ mazoVacio: true }); return }
       const cartaId = sala.mazo.shift()
       sala.cartaActual = cartaId
@@ -201,7 +205,7 @@ app.all('/api/*', (req, res) => {
       if (req.method !== 'POST') { res.status(405).json({ error: 'POST required' }); return }
       const body = req.body
       const sala = salas.get(body.salaId)
-      if (!sala || sala.estado !== 'jugando') { res.status(400).json({ error: 'Juego no activo' }); return }
+      if (!sala || sala.estado !== 'jugando') { console.log(`iniciar-juego antes: sala ${body.salaId} estado=${sala?.estado}`); res.status(400).json({ error: 'Juego no activo' }); return }
       const jugador = sala.jugadores.find(j => j.id === body.jugadorId)
       if (!jugador || !jugador.tablero) { res.json({ valida: false, razon: 'Jugador sin tablero' }); return }
       const cartasDibujadas = new Set(sala.historial)
@@ -360,8 +364,14 @@ wss.on('connection', (ws) => {
           wsClients.set(ws, { salaId: data.salaId || null, jugadorId: data.jugadorId || null })
           const sala = salas.get(data.salaId)
           if (sala) {
+            if (data.jugadorId) {
+              const j = sala.jugadores.find(p => p.id === data.jugadorId)
+              if (j) j.ultimaActividad = Date.now()
+            }
             const jugador = sala.jugadores.find(j => j.id === data.jugadorId)
             wsSend(ws, 'sala-actualizada', { ...sanitizarSala(sala, data.jugadorId), tablero: jugador?.tablero || null })
+          } else {
+            wsSend(ws, 'error', { message: 'Sala no existe', code: 'sala_no_existe' })
           }
           break
         }
@@ -383,6 +393,7 @@ setInterval(() => {
     sala.jugadores = sala.jugadores.filter(j => ahora - (j.ultimaActividad || 0) < TIMEOUT_MS)
     if (sala.jugadores.length === 0) { salas.delete(id); continue }
     if (sala.jugadores.length === 1) {
+      console.log(`abandono: sala ${id} ganador=${sala.jugadores[0].nombre}`)
       sala.estado = 'terminado'
       sala.ganador = sala.jugadores[0]
       sala.motivoFin = 'abandono'

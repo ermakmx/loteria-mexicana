@@ -11,7 +11,7 @@ const API = '/api'
 
 export default function Game({ jugador, salaId, onSalir }) {
   const { t } = useLenguaje()
-  const { connected, lastState } = useWebSocket(salaId, jugador.id)
+  const { connected, lastState, salaError } = useWebSocket(salaId, jugador.id)
   const [estado, setEstado] = useState('esperando')
   const [tablero, setTablero] = useState([])
   const [marcadas, setMarcadas] = useState(new Set())
@@ -28,6 +28,15 @@ export default function Game({ jugador, salaId, onSalir }) {
   const esHost = jugadores[0]?.id === jugador.id
   const ultimoCartaIdRef = useRef(null)
   const pollingRef = useRef(null)
+  const redirigiendoRef = useRef(false)
+
+  // Sala desapareció (servidor reiniciado) → volver al lobby
+  useEffect(() => {
+    if (salaError === 'sala_no_existe' && !redirigiendoRef.current) {
+      redirigiendoRef.current = true
+      onSalir()
+    }
+  }, [salaError, onSalir])
 
   async function post(endpoint, data, maxRetries = 4) {
     for (let i = 0; i < maxRetries; i++) {
