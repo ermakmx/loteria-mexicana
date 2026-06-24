@@ -158,7 +158,7 @@ export default function Lobby({ onUnirse }) {
   return (
     <div className="w-full max-w-sm mx-auto px-4">
       <div className="text-center mb-8 mt-4 sm:mt-8">
-        <div className="text-5xl sm:text-6xl mb-3">🎴</div>
+        <div className="mb-3"><img src="/cards/back.png" alt="Lotería" className="w-24 sm:w-28 mx-auto" /></div>
         <h1 className="text-4xl sm:text-5xl font-bold text-loteria-gold drop-shadow-lg mb-1">{t('lobby_title')}</h1>
         <p className="text-base sm:text-lg text-white/60">{t('lobby_subtitle')}</p>
       </div>
