@@ -12,6 +12,11 @@ server/dist/
 # Runtime data
 server/rankings.json
 
+# Old/duplicate dirs
+render-cli/
+server/src/
+websocket-server/
+
 # Python
 __pycache__/
 *.pyc
