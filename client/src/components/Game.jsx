@@ -191,7 +191,7 @@ export default function Game({ jugador, salaId, onSalir }) {
     return (
       <div className="w-full max-w-sm mx-auto text-center py-8 sm:py-12 px-4">
         <div className="panel p-8">
-          <div className="text-6xl sm:text-7xl mb-4">{ganaste ? (esAbandono ? '\U0001f4aa' : '\U0001f3c6') : '\U0001f3b4'}</div>
+          <div className="text-6xl sm:text-7xl mb-4">{ganaste ? (esAbandono ? '💪' : '🏆') : '🎴'}</div>
           <h2 className={`text-3xl sm:text-4xl font-bold mb-2 ${ganaste ? 'text-loteria-gold' : 'text-white/80'}`}>
             {ganaste ? t('ganaste') : `${t('ganador')} ${ganador?.nombre}`}
           </h2>
@@ -215,7 +215,7 @@ export default function Game({ jugador, salaId, onSalir }) {
           {t('salir')}
         </button>
         <div className="text-center">
-          <h1 className="text-base font-bold text-loteria-gold/80 tracking-wide">{'\U0001f3b4'} {t('lobby_title')}</h1>
+          <h1 className="text-base font-bold text-loteria-gold/80 tracking-wide">🎴 {t('lobby_title')}</h1>
           <div className="text-[10px] text-white/30 tracking-widest">{salaId}</div>
         </div>
         <div className="flex gap-1">

@@ -142,7 +142,7 @@ export default function Lobby({ onUnirse }) {
               {rankings.map((r, i) => (
                 <div key={r.nombre} className="flex items-center justify-between py-2 px-3 rounded-xl bg-white/5">
                   <span className="flex items-center gap-2">
-                    <span className="w-6 text-center text-sm">{i === 0 ? '\U0001f947' : i === 1 ? '\U0001f948' : i === 2 ? '\U0001f949' : `#${i + 1}`}</span>
+                    <span className="w-6 text-center text-sm">{i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}</span>
                     <span className="font-medium text-sm">{r.nombre}</span>
                   </span>
                   <span className="text-loteria-gold font-bold text-sm">{r.victorias} {r.victorias === 1 ? t('victoria') : t('victorias')}</span>
@@ -158,7 +158,7 @@ export default function Lobby({ onUnirse }) {
   return (
     <div className="w-full max-w-sm mx-auto px-4">
       <div className="text-center mb-8 mt-4 sm:mt-8">
-        <div className="text-5xl sm:text-6xl mb-3">{'\U0001f3b4'}</div>
+        <div className="text-5xl sm:text-6xl mb-3">🎴</div>
         <h1 className="text-4xl sm:text-5xl font-bold text-loteria-gold drop-shadow-lg mb-1">{t('lobby_title')}</h1>
         <p className="text-base sm:text-lg text-white/60">{t('lobby_subtitle')}</p>
       </div>
@@ -187,7 +187,7 @@ export default function Lobby({ onUnirse }) {
           <p className="text-sm text-white/60">{t('compartir_codigo')}</p>
           <button onClick={crearSala} disabled={cargando}
             className="w-full btn-primary py-4 disabled:opacity-40 flex items-center justify-center gap-2">
-            {cargando ? <span className="flex items-center gap-2"><span className="animate-spin text-lg">{'\U0001f3b4'}</span> {t('creando')}...</span> : t('crear_sala')}
+            {cargando ? <span className="flex items-center gap-2"><span className="animate-spin text-lg">🎴</span> {t('creando')}...</span> : t('crear_sala')}
           </button>
         </div>
       ) : modo === 'unirse' ? (
@@ -201,7 +201,7 @@ export default function Lobby({ onUnirse }) {
           />
           <button onClick={unirseSala} disabled={cargando}
             className="w-full btn-primary py-4 disabled:opacity-40 flex items-center justify-center gap-2">
-            {cargando ? <span className="flex items-center gap-2"><span className="animate-spin text-lg">{'\U0001f3b4'}</span> {t('uniendo')}...</span> : t('unirse_sala')}
+            {cargando ? <span className="flex items-center gap-2"><span className="animate-spin text-lg">🎴</span> {t('uniendo')}...</span> : t('unirse_sala')}
           </button>
         </div>
       ) : (
