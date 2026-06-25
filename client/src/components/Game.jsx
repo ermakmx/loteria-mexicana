@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { getCarta } from '../data/cartas'
 import { cantarCarta, callarCantor, reproducirEfecto } from '../utils/cantor'
 import Tablero from './Tablero'
+import Mazo from './Mazo'
 import CantorAnimado from './CantorAnimado'
 import { useLenguaje } from '../i18n/context'
 import useWebSocket from '../useWebSocket'
@@ -297,20 +298,21 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
         <div className="w-full">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-4 p-2 sm:p-3 bg-white/[0.03] rounded-xl">
             <CantorAnimado activo={cantando} cartaNombre={cartaActual?.nombre} />
-            {cartaActual && (
-              <div className="flex items-center gap-2 text-xs text-white/50">
-                <span className="font-bold text-loteria-gold">#{historial.length}/53</span>
-                <span className="w-6 h-6 rounded-full bg-loteria-gold/20 text-loteria-gold text-xs font-bold flex items-center justify-center">{estado === 'jugando' ? cuentaRegresiva : '--'}</span>
-              </div>
-            )}
             <button onClick={cantarLoteria}
               className="btn-danger text-sm sm:text-base px-4 sm:px-5 py-2 shadow-lg shadow-red-600/20 animate-pulse-loteria ml-auto">¡LOTERÍA!</button>
           </div>
-          <div className={`grid gap-2 sm:gap-3 ${tableros.length === 1 ? '' : 'sm:grid-cols-2'} ${tableros.length === 3 ? 'lg:grid-cols-3' : ''}`}>
-            {tableros.map((tb, i) => (
-              <Tablero key={i} tablero={tb} marcadas={marcadas} onMarcar={marcarCarta}
-                titulo={tableros.length > 1 ? `${t('tablero_numero')} ${i + 1}` : ''} />
-            ))}
+          <div className="flex flex-col lg:flex-row gap-3 items-start">
+            <div className="w-full lg:w-auto lg:max-w-[260px] flex-shrink-0">
+              <Mazo cartaActualId={cartaActualId} historial={historial} cartasRestantes={cartasRestantes} />
+            </div>
+            <div className="flex-1 min-w-0 w-full">
+              <div className={`grid gap-2 sm:gap-3 ${tableros.length === 1 ? '' : 'sm:grid-cols-2'} ${tableros.length === 3 ? 'lg:grid-cols-3' : ''}`}>
+                {tableros.map((tb, i) => (
+                  <Tablero key={i} tablero={tb} marcadas={marcadas} onMarcar={marcarCarta}
+                    titulo={tableros.length > 1 ? `${t('tablero_numero')} ${i + 1}` : ''} />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
