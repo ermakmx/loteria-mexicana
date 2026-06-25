@@ -176,6 +176,14 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
   }
 
   async function cantarLoteria() {
+    if (!tablero.every(c => marcadas.has(c))) {
+      setError(t('loteria_falsa') + ' ' + (t('marca_todas') || 'Marca todas las cartas primero'))
+      setErrorClave(k => k + 1)
+      setTimeout(() => setError(''), 4000)
+      callarCantor()
+      reproducirEfecto('trampa')
+      return
+    }
     const data = await post('/cantar-loteria', { salaId, jugadorId: jugador.id })
     if (data.valida) {
       setEstado('terminado')
