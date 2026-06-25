@@ -68,7 +68,6 @@ export default function Game({ jugador, salaId, onSalir }) {
 
     if (data.estado === 'jugando' && data.tablero) {
       setTablero(data.tablero)
-      setMarcadas(new Set())
     }
 
     if (data.cartaActualId !== ultimoCartaIdRef.current && data.cartaActualId !== null) {
