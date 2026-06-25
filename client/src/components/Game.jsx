@@ -14,7 +14,6 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
   const { connected, lastState, salaError } = useWebSocket(salaId, jugador.id)
   const [estado, setEstado] = useState('esperando')
   const [tableros, setTableros] = useState([])
-  const [tableroIndex, setTableroIndex] = useState(0)
   const [marcadas, setMarcadas] = useState(new Set())
   const [cartaActualId, setCartaActualId] = useState(null)
   const [historial, setHistorial] = useState([])
@@ -174,7 +173,6 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
     if (data.tableros) setTableros(data.tableros)
     if (data.jugadores) setJugadores(data.jugadores)
     ultimoCartaIdRef.current = null
-    setTableroIndex(0)
     setEstado('jugando')
   }
 
@@ -198,7 +196,6 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
     const data = await post('/nuevo-juego', { salaId })
     ultimoCartaIdRef.current = null
     setTableros([])
-    setTableroIndex(0)
     setMarcadas(new Set())
     setGanador(null)
     setEstado('esperando')
@@ -206,7 +203,6 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
   }
 
   const cartaActual = cartaActualId ? getCarta(cartaActualId) : null
-  const tableroActual = tableros[tableroIndex] || []
 
   if (estado === 'terminado') {
     const ganaste = ganador?.id === jugador.id
@@ -300,11 +296,11 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
       )}
 
       {estado === 'jugando' && (
-        <div className="lg:grid lg:grid-cols-[260px_1fr] lg:gap-6 xl:gap-8 items-start">
-          <div className="flex flex-col items-center gap-3 mb-4 lg:mb-0 lg:sticky lg:top-4">
+        <div className="flex flex-col lg:flex-row lg:gap-6 xl:gap-8 items-start">
+          <div className="flex flex-row lg:flex-col items-center gap-3 mb-4 lg:mb-0 lg:sticky lg:top-4 w-full lg:w-auto lg:min-w-[200px]">
             <CantorAnimado activo={cantando} cartaNombre={cartaActual?.nombre} />
             <Mazo cartaActualId={cartaActualId} historial={historial} cartasRestantes={cartasRestantes} />
-            <div className="w-full max-w-[260px]">
+            <div className="hidden lg:block w-full max-w-[200px]">
               <div className="flex items-center gap-3 py-2 px-3 rounded-xl bg-white/5">
                 <div className="relative w-10 h-10 flex-shrink-0">
                   <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
@@ -321,21 +317,21 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
               </div>
             </div>
             <button onClick={cantarLoteria}
-              className="btn-danger text-xl sm:text-2xl px-8 py-5 sm:py-6 shadow-2xl shadow-red-600/20 w-full max-w-[260px] animate-pulse-loteria">¡LOTERÍA!</button>
+              className="btn-danger text-lg sm:text-xl px-6 py-4 shadow-2xl shadow-red-600/20 w-full max-w-[200px] animate-pulse-loteria">¡LOTERÍA!</button>
           </div>
-          <div className="flex-1">
-            {tableros.length > 1 && (
-              <div className="flex gap-1 mb-2 justify-center">
-                {tableros.map((_, i) => (
-                  <button key={i} onClick={() => setTableroIndex(i)}
-                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${i === tableroIndex ? 'bg-loteria-gold/30 text-loteria-gold' : 'bg-white/10 text-white/50 hover:bg-white/20'}`}>
-                    {t('tablero_numero')} {i + 1}
-                  </button>
-                ))}
-              </div>
-            )}
-            <Tablero tablero={tableroActual} marcadas={marcadas} onMarcar={marcarCarta}
-              titulo={tableros.length > 1 ? `${t('tablero_numero')} ${tableroIndex + 1}` : t('tu_tablero')} />
+          <div className="flex-1 w-full min-w-0">
+            <div className={`grid gap-2 sm:gap-3 ${
+              tableros.length === 1 ? 'grid-cols-1' :
+              tableros.length === 2 ? 'grid-cols-1 sm:grid-cols-2' :
+              tableros.length === 3 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
+              'grid-cols-1 sm:grid-cols-2'
+            }`}>
+              {tableros.map((t, i) => (
+                <Tablero key={i} tablero={t} marcadas={marcadas} onMarcar={marcarCarta}
+                  titulo={tableros.length > 1 ? `${t('tablero_numero')} ${i + 1}` : t('tu_tablero')}
+                  compacto={tableros.length > 1} />
+              ))}
+            </div>
           </div>
         </div>
       )}
