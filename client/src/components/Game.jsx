@@ -186,6 +186,7 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
     } else {
       setError(t('loteria_falsa') + ' ' + (data.razon || ''))
       setErrorClave(k => k + 1)
+      setTimeout(() => setError(''), 4000)
       callarCantor()
       reproducirEfecto('trampa')
     }

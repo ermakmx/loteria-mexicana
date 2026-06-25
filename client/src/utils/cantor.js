@@ -46,12 +46,12 @@ export function reproducirEfecto(tipo, callback) {
 
   const esVictoria = tipo === 'victoria'
   const texto = esVictoria
-    ? '¡Albricias! ¡Albricias! ¡Albricias!'
+    ? '¡LOTERÍA! ¡LOTERÍA! ¡LOTERÍA!'
     : 'Buuuuu, trampa, trampa'
 
   const utterance = new SpeechSynthesisUtterance(texto)
   utterance.lang = 'es-MX'
-  utterance.rate = esVictoria ? 1.3 : 0.8
+  utterance.rate = esVictoria ? 1.5 : 0.8
   utterance.pitch = esVictoria ? 1.2 : 0.4
 
   utteranceActual = utterance
