@@ -1,21 +1,15 @@
 import CartaLotería from './CartaLotería'
 
-export default function Tablero({ tablero, marcadas, onMarcar, titulo, compacto }) {
+export default function Tablero({ tablero, marcadas, onMarcar }) {
   return (
-    <div className="w-full">
-      {titulo && (
-        <h3 className={`font-bold text-center text-white/50 mb-1 uppercase tracking-wider ${compacto ? 'text-[10px]' : 'text-sm'}`}>
-          {titulo}
-        </h3>
-      )}
-      <div className={`grid grid-cols-4 ${compacto ? 'gap-1' : 'gap-1.5 sm:gap-2'}`}>
+    <div className="w-full max-w-md mx-auto">
+      <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
         {tablero.map((cartaId) => (
           <CartaLotería
             key={cartaId}
             cartaId={cartaId}
             marcada={marcadas.has(cartaId)}
             onClick={() => onMarcar(cartaId)}
-            compacto={compacto}
           />
         ))}
       </div>

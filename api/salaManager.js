@@ -10,10 +10,9 @@ function generarCodigo() {
   return Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
 }
 
-export async function crearSala(publica = false, tableros = 1) {
+export async function crearSala(publica = false) {
   const id = generarCodigo()
-  const cantidad = Math.max(1, Math.min(4, parseInt(tableros) || 1))
-  const sala = { id, publica, tableros: cantidad, jugadores: [], estado: 'esperando', mazo: [], cartaActual: null, historial: [], ganador: null }
+  const sala = { id, publica, jugadores: [], estado: 'esperando', mazo: [], cartaActual: null, historial: [], ganador: null }
   salas.set(id, sala)
   return sala
 }
@@ -23,7 +22,7 @@ export async function unirseSala(salaId, jugador) {
   if (!sala) return { error: 'La sala no existe' }
   if (sala.estado !== 'esperando') return { error: 'El juego ya comenzó' }
   if (sala.jugadores.some(j => j.nombre === jugador.nombre)) return { error: 'Ese nombre ya está en uso' }
-  const nuevoJugador = { id: crypto.randomUUID(), nombre: jugador.nombre, tableros: null, ultimaActividad: Date.now() }
+  const nuevoJugador = { id: crypto.randomUUID(), nombre: jugador.nombre, tablero: null, ultimaActividad: Date.now() }
   sala.jugadores.push(nuevoJugador)
   return { jugador: nuevoJugador, sala }
 }

@@ -35,7 +35,6 @@ function getParam(req, name) {
 
 function sanitizarSala(sala, jugadorId) {
   if (!sala) return null
-  const jugador = jugadorId ? sala.jugadores.find(j => j.id === jugadorId) : null
   return {
     estado: sala.estado,
     jugadores: sala.jugadores.map(j => ({ id: j.id, nombre: j.nombre })),
@@ -43,7 +42,7 @@ function sanitizarSala(sala, jugadorId) {
     historial: sala.historial,
     cartasRestantes: sala.mazo?.length ?? 0,
     ganador: sala.ganador ? { id: sala.ganador.id, nombre: sala.ganador.nombre } : null,
-    tableros: jugador?.tableros || null,
+    tablero: jugadorId ? (sala.jugadores.find(j => j.id === jugadorId)?.tablero || null) : null,
     motivoFin: sala.motivoFin || null,
   }
 }
@@ -57,9 +56,9 @@ export default async function handler(req, res) {
     switch (path) {
       case 'crear-sala': {
         if (req.method !== 'POST') { json(res, { error: 'POST required' }, 405); return }
-        const { nombre, publica, tableros } = await getBody(req)
+        const { nombre, publica } = await getBody(req)
         if (!nombre) { json(res, { error: 'Nombre requerido' }, 400); return }
-        const sala = await crearSala(!!publica, tableros)
+        const sala = await crearSala(!!publica)
         const r = await unirseSala(sala.id, { nombre })
         if (r.error) { await eliminarSala(sala.id); json(res, r, 400); return }
         json(res, {

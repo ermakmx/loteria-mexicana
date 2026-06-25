@@ -18,7 +18,6 @@ export default function Lobby({ onUnirse }) {
   const [reconnectChecking, setReconnectChecking] = useState(false)
   const [salasPublicas, setSalasPublicas] = useState([])
   const [cargandoSalas, setCargandoSalas] = useState(false)
-  const [cantTableros, setCantTableros] = useState(1)
   const pollingRef = useRef(null)
 
   useEffect(() => {
@@ -72,7 +71,7 @@ export default function Lobby({ onUnirse }) {
       const r = await fetch(`${API}/crear-sala`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre: nombre.trim(), publica, tableros: cantTableros }),
+        body: JSON.stringify({ nombre: nombre.trim(), publica }),
       })
       const data = await r.json()
       if (data.error) { setError(data.error); setCargando(false); return }
@@ -221,15 +220,6 @@ export default function Lobby({ onUnirse }) {
             <button onClick={() => { setModo(null); setError('') }} className="text-white/40 hover:text-white/80 text-lg">{'\u2190'}</button>
             <h2 className="font-bold text-lg">{t('crear_privada')}</h2>
           </div>
-          <div>
-            <label className="block text-xs text-white/50 mb-2">{t('cant_tableros')}</label>
-            <div className="flex gap-2">
-              {[1, 2, 3, 4].map(n => (
-                <button key={n} onClick={() => setCantTableros(n)}
-                  className={`flex-1 py-2 rounded-xl text-sm font-bold transition-colors ${cantTableros === n ? 'bg-loteria-gold/30 text-loteria-gold ring-1 ring-loteria-gold/50' : 'bg-white/10 text-white/50 hover:bg-white/20'}`}>{n}</button>
-              ))}
-            </div>
-          </div>
           <p className="text-sm text-white/60">{t('compartir_codigo')}</p>
           <button onClick={() => crearSala(false)} disabled={cargando}
             className="w-full btn-primary py-4 disabled:opacity-40 flex items-center justify-center gap-2">
@@ -283,7 +273,7 @@ export default function Lobby({ onUnirse }) {
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => { setModo('crear-privada'); setError(''); setCantTableros(1) }}
+            <button onClick={() => { setModo('crear-privada'); setError('') }}
               className="btn-ghost py-3 flex items-center justify-center gap-1 text-sm border border-white/10 rounded-xl">
               🔒 {t('privada')}
             </button>
@@ -293,21 +283,10 @@ export default function Lobby({ onUnirse }) {
             </button>
           </div>
 
-          <div className="panel p-4">
-            <div className="flex items-center justify-between mb-3">
-              <label className="text-sm font-bold text-white/60 uppercase tracking-wider">{t('crear_publica')}</label>
-              <div className="flex gap-1">
-                {[1, 2, 3, 4].map(n => (
-                  <button key={n} onClick={() => setCantTableros(n)}
-                    className={`w-7 h-7 rounded-lg text-xs font-bold transition-colors ${cantTableros === n ? 'bg-loteria-gold/30 text-loteria-gold' : 'bg-white/10 text-white/50 hover:bg-white/20'}`}>{n}</button>
-                ))}
-              </div>
-            </div>
-            <button onClick={() => crearSala(true)} disabled={cargando}
-              className="w-full btn-primary py-3 flex items-center justify-center gap-2 text-sm disabled:opacity-40">
-              {cargando ? <span className="flex items-center gap-2"><span className="animate-spin text-lg">🎴</span> {t('creando')}...</span> : `${t('crear_publica')} (${cantTableros} ${t('tablero_numero').toLowerCase()})`}
-            </button>
-          </div>
+          <button onClick={() => crearSala(true)} disabled={cargando}
+            className="w-full btn-primary py-4 flex items-center justify-center gap-2 text-base disabled:opacity-40">
+            {cargando ? <span className="flex items-center gap-2"><span className="animate-spin text-lg">🎴</span> {t('creando')}...</span> : t('crear_publica')}
+          </button>
 
           <div className="grid grid-cols-2 gap-2">
             <button onClick={verRankings} disabled={cargandoRankings}

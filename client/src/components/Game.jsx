@@ -13,7 +13,7 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
   const { t } = useLenguaje()
   const { connected, lastState, salaError } = useWebSocket(salaId, jugador.id)
   const [estado, setEstado] = useState('esperando')
-  const [tableros, setTableros] = useState([])
+  const [tablero, setTablero] = useState([])
   const [marcadas, setMarcadas] = useState(new Set())
   const [cartaActualId, setCartaActualId] = useState(null)
   const [historial, setHistorial] = useState([])
@@ -74,8 +74,8 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
     if (!data) return
     setJugadores(data.jugadores || [])
 
-    if (data.estado === 'jugando' && data.tableros) {
-      setTableros(data.tableros)
+    if (data.estado === 'jugando' && data.tablero) {
+      setTablero(data.tablero)
     }
 
     if (data.cartaActualId !== ultimoCartaIdRef.current && data.cartaActualId !== null) {
@@ -169,7 +169,7 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
     const data = await post('/iniciar-juego', { salaId, jugadorId: jugador.id })
     setCargando(false)
     if (data.error) { setError(data.error); setErrorClave(k => k + 1); return }
-    if (data.tableros) setTableros(data.tableros)
+    if (data.tablero) setTablero(data.tablero)
     if (data.jugadores) setJugadores(data.jugadores)
     ultimoCartaIdRef.current = null
     setEstado('jugando')
@@ -194,7 +194,7 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
   async function nuevoJuego() {
     const data = await post('/nuevo-juego', { salaId })
     ultimoCartaIdRef.current = null
-    setTableros([])
+    setTablero([])
     setMarcadas(new Set())
     setGanador(null)
     setEstado('esperando')
@@ -306,12 +306,7 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
               <Mazo cartaActualId={cartaActualId} historial={historial} cartasRestantes={cartasRestantes} />
             </div>
             <div className="flex-1 min-w-0 w-full">
-              <div className={`grid gap-2 sm:gap-3 ${tableros.length === 1 ? '' : 'sm:grid-cols-2'} ${tableros.length === 3 ? 'lg:grid-cols-3' : ''}`}>
-                {tableros.map((tb, i) => (
-                  <Tablero key={i} tablero={tb} marcadas={marcadas} onMarcar={marcarCarta}
-                    titulo={tableros.length > 1 ? `${t('tablero_numero')} ${i + 1}` : ''} />
-                ))}
-              </div>
+              <Tablero tablero={tablero} marcadas={marcadas} onMarcar={marcarCarta} />
             </div>
           </div>
         </div>
