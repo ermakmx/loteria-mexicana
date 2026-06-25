@@ -2,7 +2,6 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { getCarta } from '../data/cartas'
 import { cantarCarta, callarCantor, reproducirEfecto } from '../utils/cantor'
 import Tablero from './Tablero'
-import Mazo from './Mazo'
 import CantorAnimado from './CantorAnimado'
 import { useLenguaje } from '../i18n/context'
 import useWebSocket from '../useWebSocket'
@@ -295,42 +294,23 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
       )}
 
       {estado === 'jugando' && (
-        <div className="flex flex-col lg:flex-row lg:gap-6 xl:gap-8 items-start">
-          <div className="flex flex-row lg:flex-col items-center gap-3 mb-4 lg:mb-0 lg:sticky lg:top-4 w-full lg:w-auto lg:min-w-[200px]">
+        <div className="w-full">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-4 p-2 sm:p-3 bg-white/[0.03] rounded-xl">
             <CantorAnimado activo={cantando} cartaNombre={cartaActual?.nombre} />
-            <Mazo cartaActualId={cartaActualId} historial={historial} cartasRestantes={cartasRestantes} />
-            <div className="hidden lg:block w-full max-w-[200px]">
-              <div className="flex items-center gap-3 py-2 px-3 rounded-xl bg-white/5">
-                <div className="relative w-10 h-10 flex-shrink-0">
-                  <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="15" fill="none" className="stroke-white/10" strokeWidth="3" />
-                    <circle cx="18" cy="18" r="15" fill="none" className="stroke-loteria-gold" strokeWidth="3"
-                      strokeDasharray={`${estado === 'jugando' ? (cuentaRegresiva / 4) * 94.2 : 0} 94.2`} strokeLinecap="round" />
-                  </svg>
-                  <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">{estado === 'jugando' ? cuentaRegresiva : '--'}</span>
-                </div>
-                <div className="text-left leading-tight">
-                  <div className="text-xs font-medium text-white/80">Carta {historial.length + 1} / 53</div>
-                  <div className="text-[10px] text-white/30">{cartasRestantes} restantes</div>
-                </div>
+            {cartaActual && (
+              <div className="flex items-center gap-2 text-xs text-white/50">
+                <span className="font-bold text-loteria-gold">#{historial.length}/53</span>
+                <span className="w-6 h-6 rounded-full bg-loteria-gold/20 text-loteria-gold text-xs font-bold flex items-center justify-center">{estado === 'jugando' ? cuentaRegresiva : '--'}</span>
               </div>
-            </div>
+            )}
             <button onClick={cantarLoteria}
-              className="btn-danger text-lg sm:text-xl px-6 py-4 shadow-2xl shadow-red-600/20 w-full max-w-[200px] animate-pulse-loteria">¡LOTERÍA!</button>
+              className="btn-danger text-sm sm:text-base px-4 sm:px-5 py-2 shadow-lg shadow-red-600/20 animate-pulse-loteria ml-auto">¡LOTERÍA!</button>
           </div>
-          <div className="flex-1 w-full min-w-0">
-            <div className={`grid gap-2 sm:gap-3 ${
-              tableros.length === 1 ? 'grid-cols-1' :
-              tableros.length === 2 ? 'grid-cols-1 sm:grid-cols-2' :
-              tableros.length === 3 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
-              'grid-cols-1 sm:grid-cols-2'
-            }`}>
-              {tableros.map((tb, i) => (
-                <Tablero key={i} tablero={tb} marcadas={marcadas} onMarcar={marcarCarta}
-                  titulo={tableros.length > 1 ? `${t('tablero_numero')} ${i + 1}` : t('tu_tablero')}
-                  compacto={tableros.length > 1} />
-              ))}
-            </div>
+          <div className={`grid gap-2 sm:gap-3 ${tableros.length === 1 ? '' : 'sm:grid-cols-2'} ${tableros.length === 3 ? 'lg:grid-cols-3' : ''}`}>
+            {tableros.map((tb, i) => (
+              <Tablero key={i} tablero={tb} marcadas={marcadas} onMarcar={marcarCarta}
+                titulo={tableros.length > 1 ? `${t('tablero_numero')} ${i + 1}` : ''} />
+            ))}
           </div>
         </div>
       )}
