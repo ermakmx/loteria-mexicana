@@ -68,6 +68,7 @@ export default function Game({ jugador, salaId, onSalir }) {
 
     if (data.estado === 'jugando' && data.tablero) {
       setTablero(data.tablero)
+      setMarcadas(new Set())
     }
 
     if (data.cartaActualId !== ultimoCartaIdRef.current && data.cartaActualId !== null) {
@@ -130,11 +131,11 @@ export default function Game({ jugador, salaId, onSalir }) {
 
   useEffect(() => {
     if (estado !== 'jugando') { setCuentaRegresiva(0); return }
-    setCuentaRegresiva(6)
+    setCuentaRegresiva(4)
     const intervaloCarta = esHost ? setInterval(async () => {
-      setCuentaRegresiva(6)
+      setCuentaRegresiva(4)
       await post('/siguiente-carta', { salaId })
-    }, 6000) : null
+    }, 4000) : null
     const intervaloTick = setInterval(() => {
       setCuentaRegresiva(prev => Math.max(0, prev - 1))
     }, 1000)
@@ -144,7 +145,7 @@ export default function Game({ jugador, salaId, onSalir }) {
   // Non-host: reset countdown when a new card arrives
   useEffect(() => {
     if (esHost || estado !== 'jugando' || !cartaActualId) return
-    setCuentaRegresiva(6)
+    setCuentaRegresiva(4)
   }, [cartaActualId, esHost, estado])
 
   const marcarCarta = useCallback((cartaId) => {
@@ -294,7 +295,7 @@ export default function Game({ jugador, salaId, onSalir }) {
                   <svg className="w-10 h-10 -rotate-90" viewBox="0 0 36 36">
                     <circle cx="18" cy="18" r="15" fill="none" className="stroke-white/10" strokeWidth="3" />
                     <circle cx="18" cy="18" r="15" fill="none" className="stroke-loteria-gold" strokeWidth="3"
-                      strokeDasharray={`${estado === 'jugando' ? (cuentaRegresiva / 6) * 94.2 : 0} 94.2`} strokeLinecap="round" />
+                      strokeDasharray={`${estado === 'jugando' ? (cuentaRegresiva / 4) * 94.2 : 0} 94.2`} strokeLinecap="round" />
                   </svg>
                   <span className="absolute inset-0 flex items-center justify-center text-xs font-bold">{estado === 'jugando' ? cuentaRegresiva : '--'}</span>
                 </div>

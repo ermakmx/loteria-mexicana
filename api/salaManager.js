@@ -10,9 +10,9 @@ function generarCodigo() {
   return Array.from({ length: 4 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
 }
 
-export async function crearSala() {
+export async function crearSala(publica = false) {
   const id = generarCodigo()
-  const sala = { id, jugadores: [], estado: 'esperando', mazo: [], cartaActual: null, historial: [], ganador: null }
+  const sala = { id, publica, jugadores: [], estado: 'esperando', mazo: [], cartaActual: null, historial: [], ganador: null }
   salas.set(id, sala)
   return sala
 }
@@ -73,6 +73,16 @@ export async function guardarSala(sala) {
 
 export async function eliminarSala(salaId) {
   salas.delete(salaId)
+}
+
+export function listarSalasPublicas() {
+  const lista = []
+  for (const sala of salas.values()) {
+    if (sala.publica && sala.estado === 'esperando') {
+      lista.push({ id: sala.id, jugadores: sala.jugadores.length, host: sala.jugadores[0]?.nombre || '' })
+    }
+  }
+  return lista
 }
 
 // ========== RANKINGS ==========

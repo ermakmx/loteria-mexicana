@@ -149,14 +149,15 @@ app.all('/api/*', (req, res) => {
   switch (path) {
     case 'crear-sala': {
       if (req.method !== 'POST') { res.status(405).json({ error: 'POST required' }); return }
-      const { nombre } = req.body
+      const { nombre, publica } = req.body
       if (!nombre) { res.status(400).json({ error: 'Nombre requerido' }); return }
-      const id = generarCodigo()
-      const sala = { id, jugadores: [], estado: 'esperando', mazo: [], cartaActual: null, historial: [], ganador: null, inicio: null, motivoFin: null }
-      salas.set(id, sala)
+      const id = publica ? null : generarCodigo()
+      const codigoSala = id || generarCodigo()
+      const sala = { id: codigoSala, publica: !!publica, jugadores: [], estado: 'esperando', mazo: [], cartaActual: null, historial: [], ganador: null, inicio: null, motivoFin: null }
+      salas.set(codigoSala, sala)
       const jugador = { id: crypto.randomUUID(), nombre, tablero: null, ultimaActividad: Date.now() }
       sala.jugadores.push(jugador)
-      res.json({ salaId: id, jugador, jugadores: sala.jugadores.map(j => ({ id: j.id, nombre: j.nombre })) })
+      res.json({ salaId: codigoSala, jugador, jugadores: sala.jugadores.map(j => ({ id: j.id, nombre: j.nombre })) })
       return
     }
     case 'unirse-sala': {
@@ -260,6 +261,16 @@ app.all('/api/*', (req, res) => {
       res.json(sanitizarSala(sala, jugadorId))
       return
     }
+    case 'listar-salas': {
+      const lista = []
+      for (const sala of salas.values()) {
+        if (sala.publica && sala.estado === 'esperando') {
+          lista.push({ id: sala.id, jugadores: sala.jugadores.length, host: sala.jugadores[0]?.nombre || '' })
+        }
+      }
+      res.json(lista)
+      return
+    }
     case 'rankings': {
       res.json(obtenerRankings())
       return
@@ -293,8 +304,9 @@ wss.on('connection', (ws) => {
       const { event, data } = JSON.parse(raw.toString())
       switch (event) {
         case 'crear-sala': {
+          const { publica } = data || {}
           const id = generarCodigo()
-          const sala = { id, jugadores: [], estado: 'esperando', mazo: [], cartaActual: null, historial: [], ganador: null, inicio: null, motivoFin: null }
+          const sala = { id, publica: !!publica, jugadores: [], estado: 'esperando', mazo: [], cartaActual: null, historial: [], ganador: null, inicio: null, motivoFin: null }
           salas.set(id, sala)
           wsClients.set(ws, { salaId: id, jugadorId: null })
           wsSend(ws, 'sala-creada', { salaId: id })

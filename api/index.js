@@ -1,4 +1,4 @@
-import { crearSala, unirseSala, obtenerSala, eliminarSala, guardarSala, registrarVictoria, obtenerRankings, obtenerEstadisticas } from './salaManager.js'
+import { crearSala, unirseSala, obtenerSala, eliminarSala, guardarSala, registrarVictoria, obtenerRankings, obtenerEstadisticas, listarSalasPublicas } from './salaManager.js'
 import { iniciarJuego, sacarCarta, verificarLoteria, reiniciarJuego } from './gameManager.js'
 
 function cors(res) {
@@ -56,9 +56,9 @@ export default async function handler(req, res) {
     switch (path) {
       case 'crear-sala': {
         if (req.method !== 'POST') { json(res, { error: 'POST required' }, 405); return }
-        const { nombre } = await getBody(req)
+        const { nombre, publica } = await getBody(req)
         if (!nombre) { json(res, { error: 'Nombre requerido' }, 400); return }
-        const sala = await crearSala()
+        const sala = await crearSala(!!publica)
         const r = await unirseSala(sala.id, { nombre })
         if (r.error) { await eliminarSala(sala.id); json(res, r, 400); return }
         json(res, {
@@ -143,6 +143,11 @@ export default async function handler(req, res) {
         const sala = await obtenerSala(salaId, jugadorId)
         if (!sala) { json(res, { error: 'Sala no existe' }, 404); return }
         json(res, sanitizarSala(sala, jugadorId))
+        return
+      }
+
+      case 'listar-salas': {
+        json(res, listarSalasPublicas())
         return
       }
 

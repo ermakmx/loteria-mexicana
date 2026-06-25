@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useLenguaje } from '../i18n/context'
 
 const API = '/api'
@@ -16,6 +16,9 @@ export default function Lobby({ onUnirse }) {
   const [cargandoStats, setCargandoStats] = useState(false)
   const [reconnectInfo, setReconnectInfo] = useState(null)
   const [reconnectChecking, setReconnectChecking] = useState(false)
+  const [salasPublicas, setSalasPublicas] = useState([])
+  const [cargandoSalas, setCargandoSalas] = useState(false)
+  const pollingRef = useRef(null)
 
   useEffect(() => {
     try {
@@ -43,14 +46,32 @@ export default function Lobby({ onUnirse }) {
     setReconnectChecking(false)
   }
 
-  async function crearSala() {
+  async function fetchSalasPublicas() {
+    try {
+      setCargandoSalas(true)
+      const r = await fetch(`${API}/listar-salas`)
+      const data = await r.json()
+      if (Array.isArray(data)) setSalasPublicas(data)
+    } catch {} finally {
+      setCargandoSalas(false)
+    }
+  }
+
+  useEffect(() => {
+    if (modo !== null) return
+    fetchSalasPublicas()
+    pollingRef.current = setInterval(fetchSalasPublicas, 5000)
+    return () => { if (pollingRef.current) clearInterval(pollingRef.current) }
+  }, [modo])
+
+  async function crearSala(publica) {
     if (!nombre.trim()) { setError(t('nombre_requerido')); return }
     setError(''); setCargando(true)
     try {
       const r = await fetch(`${API}/crear-sala`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre: nombre.trim() }),
+        body: JSON.stringify({ nombre: nombre.trim(), publica }),
       })
       const data = await r.json()
       if (data.error) { setError(data.error); setCargando(false); return }
@@ -67,6 +88,21 @@ export default function Lobby({ onUnirse }) {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ salaId: codigo.trim().toUpperCase(), nombre: nombre.trim() }),
+      })
+      const data = await r.json()
+      if (data.error) { setError(data.error); setCargando(false); return }
+      onUnirse(data)
+    } catch { setError(t('error_conexion')); setCargando(false) }
+  }
+
+  async function unirseSalaPublica(salaId) {
+    if (!nombre.trim()) { setError(t('nombre_requerido')); return }
+    setError(''); setCargando(true)
+    try {
+      const r = await fetch(`${API}/unirse-sala`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ salaId, nombre: nombre.trim() }),
       })
       const data = await r.json()
       if (data.error) { setError(data.error); setCargando(false); return }
@@ -157,7 +193,7 @@ export default function Lobby({ onUnirse }) {
 
   return (
     <div className="w-full max-w-sm mx-auto px-4">
-      <div className="text-center mb-8 mt-4 sm:mt-8">
+      <div className="text-center mb-6 mt-4 sm:mt-8">
         <div className="mb-3"><img src="/cards/back.png" alt="Lotería" className="w-24 sm:w-28 mx-auto" /></div>
         <h1 className="text-4xl sm:text-5xl font-bold text-loteria-gold drop-shadow-lg mb-1">{t('lobby_title')}</h1>
         <p className="text-base sm:text-lg text-white/60">{t('lobby_subtitle')}</p>
@@ -169,7 +205,7 @@ export default function Lobby({ onUnirse }) {
         </button>
       </div>
 
-      {modo !== 'crear' && modo !== 'unirse' && (
+      {modo !== 'crear-privada' && modo !== 'unirse' && (
         <div className="space-y-3 mb-4">
           <label className="block text-sm font-medium text-white/60 mb-1">{t('tu_nombre')}</label>
           <input type="text" value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Ej: Juan" maxLength={20}
@@ -178,14 +214,14 @@ export default function Lobby({ onUnirse }) {
         </div>
       )}
 
-      {modo === 'crear' ? (
+      {modo === 'crear-privada' ? (
         <div className="panel p-6 space-y-4">
           <div className="flex items-center gap-3 pb-3 border-b border-white/10">
             <button onClick={() => { setModo(null); setError('') }} className="text-white/40 hover:text-white/80 text-lg">{'\u2190'}</button>
-            <h2 className="font-bold text-lg">{t('crear')}</h2>
+            <h2 className="font-bold text-lg">{t('crear_privada')}</h2>
           </div>
           <p className="text-sm text-white/60">{t('compartir_codigo')}</p>
-          <button onClick={crearSala} disabled={cargando}
+          <button onClick={() => crearSala(false)} disabled={cargando}
             className="w-full btn-primary py-4 disabled:opacity-40 flex items-center justify-center gap-2">
             {cargando ? <span className="flex items-center gap-2"><span className="animate-spin text-lg">🎴</span> {t('creando')}...</span> : t('crear_sala')}
           </button>
@@ -194,7 +230,7 @@ export default function Lobby({ onUnirse }) {
         <div className="panel p-6 space-y-4">
           <div className="flex items-center gap-3 pb-3 border-b border-white/10">
             <button onClick={() => { setModo(null); setError(''); setCodigo('') }} className="text-white/40 hover:text-white/80 text-lg">{'\u2190'}</button>
-            <h2 className="font-bold text-lg">{t('unirse')}</h2>
+            <h2 className="font-bold text-lg">{t('unirse_privada')}</h2>
           </div>
           <input type="text" value={codigo} onChange={(e) => setCodigo(e.target.value.toUpperCase())} placeholder={t('codigo_sala')} maxLength={4}
             className="w-full px-4 py-4 rounded-xl bg-white/10 border border-white/20 text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-loteria-gold/50 text-center tracking-[0.3em] text-2xl font-bold uppercase" autoFocus
@@ -212,14 +248,56 @@ export default function Lobby({ onUnirse }) {
               {reconnectChecking ? t('verificando') : t('reconectar')}
             </button>
           )}
-          <button onClick={() => { setModo('crear'); setError('') }} className="w-full btn-primary py-4 flex items-center justify-center gap-2 text-base">{t('crear_sala')}</button>
-          <button onClick={() => { setModo('unirse'); setError('') }} className="w-full btn-ghost py-4 flex items-center justify-center gap-2 text-base border border-white/10">{t('unirse_sala')}</button>
-          <button onClick={verRankings} disabled={cargandoRankings} className="w-full btn-ghost py-3 flex items-center justify-center gap-2 text-sm text-white/40 hover:text-white/70">
-            {cargandoRankings ? '\u23f3...' : t('rankings')}
+
+          <div className="panel p-4">
+            <h3 className="text-sm font-bold text-white/60 mb-3 uppercase tracking-wider">{t('salas_publicas')}</h3>
+            {cargandoSalas && salasPublicas.length === 0 ? (
+              <div className="text-center text-white/30 text-sm py-4">{t('buscando_salas')}</div>
+            ) : salasPublicas.length === 0 ? (
+              <div className="text-center text-white/30 text-sm py-4">{t('sin_salas_publicas')}</div>
+            ) : (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {salasPublicas.map(sala => (
+                  <button key={sala.id} onClick={() => unirseSalaPublica(sala.id)}
+                    disabled={cargando}
+                    className="w-full flex items-center justify-between py-2 px-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors disabled:opacity-40">
+                    <span className="flex items-center gap-2 text-sm">
+                      <span>🎴</span>
+                      <span className="font-medium">{sala.host}</span>
+                    </span>
+                    <span className="text-xs text-white/40">{sala.jugadores} {sala.jugadores === 1 ? t('jugador') : t('jugadores')}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={() => { setModo('crear-privada'); setError('') }}
+              className="btn-ghost py-3 flex items-center justify-center gap-1 text-sm border border-white/10 rounded-xl">
+              🔒 {t('privada')}
+            </button>
+            <button onClick={() => { setModo('unirse'); setError(''); setCodigo('') }}
+              className="btn-ghost py-3 flex items-center justify-center gap-1 text-sm border border-white/10 rounded-xl">
+              🔗 {t('unirse')}
+            </button>
+          </div>
+
+          <button onClick={() => crearSala(true)} disabled={cargando}
+            className="w-full btn-primary py-4 flex items-center justify-center gap-2 text-base disabled:opacity-40">
+            {cargando ? <span className="flex items-center gap-2"><span className="animate-spin text-lg">🎴</span> {t('creando')}...</span> : t('crear_publica')}
           </button>
-          <button onClick={verEstadisticas} disabled={cargandoStats} className="w-full btn-ghost py-3 flex items-center justify-center gap-2 text-sm text-white/40 hover:text-white/70">
-            {cargandoStats ? '\u23f3...' : t('estadisticas')}
-          </button>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button onClick={verRankings} disabled={cargandoRankings}
+              className="btn-ghost py-3 flex items-center justify-center gap-1 text-sm text-white/40 hover:text-white/70">
+              {cargandoRankings ? '\u23f3' : '🏆'} {t('rankings')}
+            </button>
+            <button onClick={verEstadisticas} disabled={cargandoStats}
+              className="btn-ghost py-3 flex items-center justify-center gap-1 text-sm text-white/40 hover:text-white/70">
+              {cargandoStats ? '\u23f3' : '📊'} {t('estadisticas')}
+            </button>
+          </div>
         </div>
       )}
 
