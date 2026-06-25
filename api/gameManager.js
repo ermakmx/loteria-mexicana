@@ -23,7 +23,7 @@ export function iniciarJuego(sala) {
   sala.inicio = Date.now()
 
   for (const jugador of sala.jugadores) {
-    jugador.tablero = generarTablero()
+    jugador.tableros = Array.from({ length: sala.tableros || 1 }, () => generarTablero())
   }
 
   return sala
@@ -40,10 +40,10 @@ export function sacarCarta(sala) {
 export function verificarLoteria(sala, jugadorId) {
   const jugador = sala.jugadores.find(j => j.id === jugadorId)
   if (!jugador) return { valida: false, razon: 'Jugador no encontrado' }
-  if (!jugador.tablero) return { valida: false, razon: 'Jugador sin tablero' }
+  if (!jugador.tableros) return { valida: false, razon: 'Jugador sin tablero' }
 
   const cartasDibujadas = new Set(sala.historial)
-  const todasEnTablero = jugador.tablero.every(cartaId => cartasDibujadas.has(cartaId))
+  const todasEnTablero = jugador.tableros.every(t => t.every(cartaId => cartasDibujadas.has(cartaId)))
 
   if (todasEnTablero) {
     sala.estado = 'terminado'
@@ -71,7 +71,7 @@ export function reiniciarJuego(sala) {
   sala.cartonActualIndex = -1
   sala.cantorActivo = false
   for (const jugador of sala.jugadores) {
-    jugador.tablero = null
+    jugador.tableros = null
   }
   return sala
 }

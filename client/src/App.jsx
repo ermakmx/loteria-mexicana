@@ -8,6 +8,7 @@ export default function App() {
   const [listo, setListo] = useState(false)
   const [jugador, setJugador] = useState(null)
   const [salaId, setSalaId] = useState(null)
+  const [initialGameState, setInitialGameState] = useState(null)
 
   useEffect(() => {
     if (salaId && jugador) {
@@ -19,6 +20,7 @@ export default function App() {
     localStorage.removeItem('loteria_ultimo_juego')
     setJugador(null)
     setSalaId(null)
+    setInitialGameState(null)
   }
 
   if (!listo) return <Preloader onReady={() => setListo(true)} />
@@ -30,6 +32,7 @@ export default function App() {
           <Lobby onUnirse={(data) => {
             setJugador(data.jugador)
             setSalaId(data.salaId)
+            if (data.initialState) setInitialGameState(data.initialState)
           }} />
         </div>
       </LenguajeProvider>
@@ -39,7 +42,7 @@ export default function App() {
   return (
     <LenguajeProvider>
       <div className="min-h-screen flex items-start justify-center p-4 pt-6">
-        <Game jugador={jugador} salaId={salaId} onSalir={volverAlLobby} />
+        <Game jugador={jugador} salaId={salaId} onSalir={volverAlLobby} initialState={initialGameState} />
       </div>
     </LenguajeProvider>
   )

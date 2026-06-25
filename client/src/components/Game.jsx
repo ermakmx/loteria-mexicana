@@ -9,11 +9,12 @@ import useWebSocket from '../useWebSocket'
 
 const API = '/api'
 
-export default function Game({ jugador, salaId, onSalir }) {
+export default function Game({ jugador, salaId, onSalir, initialState }) {
   const { t } = useLenguaje()
   const { connected, lastState, salaError } = useWebSocket(salaId, jugador.id)
   const [estado, setEstado] = useState('esperando')
-  const [tablero, setTablero] = useState([])
+  const [tableros, setTableros] = useState([])
+  const [tableroIndex, setTableroIndex] = useState(0)
   const [marcadas, setMarcadas] = useState(new Set())
   const [cartaActualId, setCartaActualId] = useState(null)
   const [historial, setHistorial] = useState([])
@@ -27,11 +28,19 @@ export default function Game({ jugador, salaId, onSalir }) {
   const [cuentaRegresiva, setCuentaRegresiva] = useState(0)
   const [notificacion, setNotificacion] = useState('')
   const [progreso, setProgreso] = useState({})
+  const [cargando, setCargando] = useState(false)
 
   const esHost = jugadores[0]?.id === jugador.id
   const ultimoCartaIdRef = useRef(null)
   const pollingRef = useRef(null)
   const redirigiendoRef = useRef(false)
+
+  // Apply initial state from reconnect on mount
+  useEffect(() => {
+    if (initialState) {
+      handleStateUpdate(initialState)
+    }
+  }, [])
 
   // Sala desapareció (servidor reiniciado) → volver al lobby
   useEffect(() => {
@@ -66,8 +75,9 @@ export default function Game({ jugador, salaId, onSalir }) {
     if (!data) return
     setJugadores(data.jugadores || [])
 
-    if (data.estado === 'jugando' && data.tablero) {
-      setTablero(data.tablero)
+    if (data.estado === 'jugando' && data.tableros) {
+      setTableros(data.tableros)
+      setMarcadas(new Set())
     }
 
     if (data.cartaActualId !== ultimoCartaIdRef.current && data.cartaActualId !== null) {
@@ -157,11 +167,14 @@ export default function Game({ jugador, salaId, onSalir }) {
   }, [])
 
   async function iniciarJuego() {
+    setCargando(true)
     const data = await post('/iniciar-juego', { salaId, jugadorId: jugador.id })
+    setCargando(false)
     if (data.error) { setError(data.error); setErrorClave(k => k + 1); return }
-    if (data.tablero) setTablero(data.tablero)
+    if (data.tableros) setTableros(data.tableros)
     if (data.jugadores) setJugadores(data.jugadores)
     ultimoCartaIdRef.current = null
+    setTableroIndex(0)
     setEstado('jugando')
   }
 
@@ -184,6 +197,8 @@ export default function Game({ jugador, salaId, onSalir }) {
   async function nuevoJuego() {
     const data = await post('/nuevo-juego', { salaId })
     ultimoCartaIdRef.current = null
+    setTableros([])
+    setTableroIndex(0)
     setMarcadas(new Set())
     setGanador(null)
     setEstado('esperando')
@@ -191,6 +206,7 @@ export default function Game({ jugador, salaId, onSalir }) {
   }
 
   const cartaActual = cartaActualId ? getCarta(cartaActualId) : null
+  const tableroActual = tableros[tableroIndex] || []
 
   if (estado === 'terminado') {
     const ganaste = ganador?.id === jugador.id
@@ -272,7 +288,7 @@ export default function Game({ jugador, salaId, onSalir }) {
             </div>
             {jugadores.length < 2 && <p className="text-xs text-white/30 mb-4">{t('minimo_2')}</p>}
             {esHost ? (
-              <button onClick={iniciarJuego} disabled={jugadores.length < 2}
+              <button onClick={iniciarJuego} disabled={jugadores.length < 2 || cargando}
                 className="w-full btn-primary py-4 disabled:opacity-30 disabled:cursor-not-allowed text-base">{t('iniciar_juego')}</button>
             ) : (
               <div className="flex items-center justify-center gap-2 text-sm text-white/40">
@@ -308,7 +324,18 @@ export default function Game({ jugador, salaId, onSalir }) {
               className="btn-danger text-xl sm:text-2xl px-8 py-5 sm:py-6 shadow-2xl shadow-red-600/20 w-full max-w-[260px] animate-pulse-loteria">¡LOTERÍA!</button>
           </div>
           <div className="flex-1">
-            <Tablero tablero={tablero} marcadas={marcadas} onMarcar={marcarCarta} />
+            {tableros.length > 1 && (
+              <div className="flex gap-1 mb-2 justify-center">
+                {tableros.map((_, i) => (
+                  <button key={i} onClick={() => setTableroIndex(i)}
+                    className={`px-3 py-1 text-xs font-bold rounded-lg transition-colors ${i === tableroIndex ? 'bg-loteria-gold/30 text-loteria-gold' : 'bg-white/10 text-white/50 hover:bg-white/20'}`}>
+                    {t('tablero_numero')} {i + 1}
+                  </button>
+                ))}
+              </div>
+            )}
+            <Tablero tablero={tableroActual} marcadas={marcadas} onMarcar={marcarCarta}
+              titulo={tableros.length > 1 ? `${t('tablero_numero')} ${tableroIndex + 1}` : t('tu_tablero')} />
           </div>
         </div>
       )}

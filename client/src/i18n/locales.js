@@ -52,6 +52,9 @@ export const es = {
   jugador: 'jugador',
   jugadores: 'jugadores',
   unirse_privada: 'Unirse a sala privada',
+  cant_tableros: 'Cantidad de tableros',
+  tablero_numero: 'Tablero',
+  tu_tablero: 'Tu tablero',
   idioma: '🌐 Idioma',
   nuevo_campeon: 'Eres el nuevo campeón de la Lotería',
 }
@@ -110,6 +113,9 @@ export const en = {
   jugador: 'player',
   jugadores: 'players',
   unirse_privada: 'Join private room',
+  cant_tableros: 'Number of boards',
+  tablero_numero: 'Board',
+  tu_tablero: 'Your board',
   idioma: '🌐 Language',
   nuevo_campeon: 'You are the new Loteria champion',
 }

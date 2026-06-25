@@ -104,11 +104,13 @@ function sanitizarSala(sala, jugadorId) {
   const historialSet = new Set(sala.historial || [])
   const progreso = {}
   for (const j of sala.jugadores) {
-    if (j.tablero) {
-      const llenas = j.tablero.filter(c => historialSet.has(c)).length
-      progreso[j.id] = { nombre: j.nombre, llenas, total: j.tablero.length, pct: Math.round((llenas / j.tablero.length) * 100) }
+    if (j.tableros) {
+      const llenas = j.tableros.reduce((sum, t) => sum + t.filter(c => historialSet.has(c)).length, 0)
+      const total = j.tableros.reduce((sum, t) => sum + t.length, 0)
+      progreso[j.id] = { nombre: j.nombre, llenas, total, pct: total > 0 ? Math.round((llenas / total) * 100) : 0 }
     }
   }
+  const jugador = jugadorId ? sala.jugadores.find(j => j.id === jugadorId) : null
   return {
     estado: sala.estado,
     jugadores: sala.jugadores.map(j => ({ id: j.id, nombre: j.nombre })),
@@ -116,7 +118,7 @@ function sanitizarSala(sala, jugadorId) {
     historial: sala.historial,
     cartasRestantes: sala.mazo?.length ?? 0,
     ganador: sala.ganador ? { id: sala.ganador.id, nombre: sala.ganador.nombre } : null,
-    tablero: jugadorId ? (sala.jugadores.find(j => j.id === jugadorId)?.tablero || null) : null,
+    tableros: jugador?.tableros || null,
     motivoFin: sala.motivoFin || null,
     progreso,
   }
@@ -128,7 +130,7 @@ function wsBroadcastState(sala, mensaje) {
   for (const [ws, info] of wsClients.entries()) {
     if (info.salaId !== sala.id || ws.readyState !== WebSocket.OPEN) continue
     const jugador = sala.jugadores.find(j => j.id === info.jugadorId)
-    ws.send(JSON.stringify({ event: 'sala-actualizada', data: { ...data, tablero: jugador?.tablero || null } }))
+    ws.send(JSON.stringify({ event: 'sala-actualizada', data: { ...data, tableros: jugador?.tableros || null } }))
   }
 }
 
@@ -149,13 +151,14 @@ app.all('/api/*', (req, res) => {
   switch (path) {
     case 'crear-sala': {
       if (req.method !== 'POST') { res.status(405).json({ error: 'POST required' }); return }
-      const { nombre, publica } = req.body
+      const { nombre, publica, tableros } = req.body
       if (!nombre) { res.status(400).json({ error: 'Nombre requerido' }); return }
       const id = publica ? null : generarCodigo()
       const codigoSala = id || generarCodigo()
-      const sala = { id: codigoSala, publica: !!publica, jugadores: [], estado: 'esperando', mazo: [], cartaActual: null, historial: [], ganador: null, inicio: null, motivoFin: null }
+      const cantidad = Math.max(1, Math.min(4, parseInt(tableros) || 1))
+      const sala = { id: codigoSala, publica: !!publica, tableros: cantidad, jugadores: [], estado: 'esperando', mazo: [], cartaActual: null, historial: [], ganador: null, inicio: null, motivoFin: null }
       salas.set(codigoSala, sala)
-      const jugador = { id: crypto.randomUUID(), nombre, tablero: null, ultimaActividad: Date.now() }
+      const jugador = { id: crypto.randomUUID(), nombre, tableros: null, ultimaActividad: Date.now() }
       sala.jugadores.push(jugador)
       res.json({ salaId: codigoSala, jugador, jugadores: sala.jugadores.map(j => ({ id: j.id, nombre: j.nombre })) })
       return
@@ -168,7 +171,7 @@ app.all('/api/*', (req, res) => {
       if (!sala) { res.status(400).json({ error: 'La sala no existe' }); return }
       if (sala.estado !== 'esperando') { res.status(400).json({ error: 'El juego ya comenzó' }); return }
       if (sala.jugadores.some(j => j.nombre === nombre)) { res.status(400).json({ error: 'Ese nombre ya está en uso' }); return }
-      const jugador = { id: crypto.randomUUID(), nombre, tablero: null, ultimaActividad: Date.now() }
+      const jugador = { id: crypto.randomUUID(), nombre, tableros: null, ultimaActividad: Date.now() }
       sala.jugadores.push(jugador)
       wsBroadcastState(sala)
       res.json({ jugador, jugadores: sala.jugadores.map(j => ({ id: j.id, nombre: j.nombre })), salaId })
@@ -189,10 +192,12 @@ app.all('/api/*', (req, res) => {
       sala.ganador = null
       sala.motivoFin = null
       sala.inicio = Date.now()
-      for (const j of sala.jugadores) j.tablero = generarTablero()
-      const tablero = sala.jugadores.find(j => j.id === jugadorId)?.tablero || []
+      for (const j of sala.jugadores) {
+        j.tableros = Array.from({ length: sala.tableros || 1 }, () => generarTablero())
+      }
+      const tableros = sala.jugadores.find(j => j.id === jugadorId)?.tableros || []
       wsBroadcastState(sala)
-      res.json({ jugadorId, tablero, jugadores: sala.jugadores.map(j => ({ id: j.id, nombre: j.nombre })), totalCartas: sala.mazo.length })
+      res.json({ jugadorId, tableros, jugadores: sala.jugadores.map(j => ({ id: j.id, nombre: j.nombre })), totalCartas: sala.mazo.length })
       return
     }
     case 'siguiente-carta': {
@@ -218,9 +223,9 @@ app.all('/api/*', (req, res) => {
       const sala = salas.get(body.salaId)
       if (!sala || sala.estado !== 'jugando') { console.log(`iniciar-juego antes: sala ${body.salaId} estado=${sala?.estado}`); res.status(400).json({ error: 'Juego no activo' }); return }
       const jugador = sala.jugadores.find(j => j.id === body.jugadorId)
-      if (!jugador || !jugador.tablero) { res.json({ valida: false, razon: 'Jugador sin tablero' }); return }
+      if (!jugador || !jugador.tableros) { res.json({ valida: false, razon: 'Jugador sin tablero' }); return }
       const cartasDibujadas = new Set(sala.historial)
-      if (jugador.tablero.every(c => cartasDibujadas.has(c))) {
+      if (jugador.tableros.every(t => t.every(c => cartasDibujadas.has(c)))) {
         sala.estado = 'terminado'
         sala.ganador = jugador
         registrarVictoria(jugador.nombre, sala)
@@ -243,7 +248,7 @@ app.all('/api/*', (req, res) => {
       sala.ganador = null
       sala.motivoFin = null
       sala.inicio = null
-      for (const j of sala.jugadores) j.tablero = null
+          for (const j of sala.jugadores) j.tableros = null
       wsBroadcastState(sala)
       res.json({ jugadores: sala.jugadores.map(j => ({ id: j.id, nombre: j.nombre })) })
       return
@@ -304,9 +309,10 @@ wss.on('connection', (ws) => {
       const { event, data } = JSON.parse(raw.toString())
       switch (event) {
         case 'crear-sala': {
-          const { publica } = data || {}
+          const { publica, tableros } = data || {}
           const id = generarCodigo()
-          const sala = { id, publica: !!publica, jugadores: [], estado: 'esperando', mazo: [], cartaActual: null, historial: [], ganador: null, inicio: null, motivoFin: null }
+          const cantidad = Math.max(1, Math.min(4, parseInt(tableros) || 1))
+          const sala = { id, publica: !!publica, tableros: cantidad, jugadores: [], estado: 'esperando', mazo: [], cartaActual: null, historial: [], ganador: null, inicio: null, motivoFin: null }
           salas.set(id, sala)
           wsClients.set(ws, { salaId: id, jugadorId: null })
           wsSend(ws, 'sala-creada', { salaId: id })
@@ -318,7 +324,7 @@ wss.on('connection', (ws) => {
           if (!sala) { wsSend(ws, 'error', { message: 'La sala no existe' }); break }
           if (sala.estado !== 'esperando') { wsSend(ws, 'error', { message: 'El juego ya comenzó' }); break }
           if (sala.jugadores.some(j => j.nombre === nombre)) { wsSend(ws, 'error', { message: 'Ese nombre ya está en uso' }); break }
-          const jugador = { id: crypto.randomUUID(), nombre, tablero: null, ultimaActividad: Date.now() }
+          const jugador = { id: crypto.randomUUID(), nombre, tableros: null, ultimaActividad: Date.now() }
           sala.jugadores.push(jugador)
           wsClients.set(ws, { salaId, jugadorId: jugador.id })
           wsSend(ws, 'sala-unida', { jugador })
@@ -339,7 +345,7 @@ wss.on('connection', (ws) => {
           sala.ganador = null
           sala.motivoFin = null
           sala.inicio = Date.now()
-          for (const j of sala.jugadores) j.tablero = generarTablero()
+          for (const j of sala.jugadores) j.tableros = Array.from({ length: sala.tableros || 1 }, () => generarTablero())
           wsBroadcastState(sala)
           break
         }
@@ -356,9 +362,9 @@ wss.on('connection', (ws) => {
           const sala = salas.get(data.salaId)
           if (!sala || sala.estado !== 'jugando') { wsSend(ws, 'error', { message: 'Juego no activo' }); break }
           const jugador = sala.jugadores.find(j => j.id === data.jugadorId)
-          if (!jugador || !jugador.tablero) { wsSend(ws, 'error', { message: 'Jugador sin tablero' }); break }
+          if (!jugador || !jugador.tableros) { wsSend(ws, 'error', { message: 'Jugador sin tablero' }); break }
           const cartasDibujadas = new Set(sala.historial)
-          if (jugador.tablero.every(c => cartasDibujadas.has(c))) {
+          if (jugador.tableros.every(t => t.every(c => cartasDibujadas.has(c)))) {
             sala.estado = 'terminado'
             sala.ganador = jugador
             registrarVictoria(jugador.nombre, sala)
@@ -378,7 +384,7 @@ wss.on('connection', (ws) => {
           sala.ganador = null
           sala.motivoFin = null
           sala.inicio = null
-          for (const j of sala.jugadores) j.tablero = null
+      for (const j of sala.jugadores) j.tableros = null
           wsBroadcastState(sala)
           break
         }
@@ -391,7 +397,7 @@ wss.on('connection', (ws) => {
               if (j) j.ultimaActividad = Date.now()
             }
             const jugador = sala.jugadores.find(j => j.id === data.jugadorId)
-            wsSend(ws, 'sala-actualizada', { ...sanitizarSala(sala, data.jugadorId), tablero: jugador?.tablero || null })
+            wsSend(ws, 'sala-actualizada', { ...sanitizarSala(sala, data.jugadorId), tableros: jugador?.tableros || null })
           } else {
             wsSend(ws, 'error', { message: 'Sala no existe', code: 'sala_no_existe' })
           }
