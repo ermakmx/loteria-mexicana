@@ -76,7 +76,6 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
 
     if (data.estado === 'jugando' && data.tableros) {
       setTableros(data.tableros)
-      setMarcadas(new Set())
     }
 
     if (data.cartaActualId !== ultimoCartaIdRef.current && data.cartaActualId !== null) {
@@ -326,8 +325,8 @@ export default function Game({ jugador, salaId, onSalir, initialState }) {
               tableros.length === 3 ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' :
               'grid-cols-1 sm:grid-cols-2'
             }`}>
-              {tableros.map((t, i) => (
-                <Tablero key={i} tablero={t} marcadas={marcadas} onMarcar={marcarCarta}
+              {tableros.map((tb, i) => (
+                <Tablero key={i} tablero={tb} marcadas={marcadas} onMarcar={marcarCarta}
                   titulo={tableros.length > 1 ? `${t('tablero_numero')} ${i + 1}` : t('tu_tablero')}
                   compacto={tableros.length > 1} />
               ))}
